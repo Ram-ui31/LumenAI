@@ -1,0 +1,23 @@
+# Minimums = versions the code was written/tested against (Sept 2026).
+# Exact working versions are frozen to requirements.lock.txt by setup.sh; pin from that once all phases pass.
+torch>=2.8
+torchvision>=0.23
+diffusers>=0.40.0
+transformers>=5.0          # Sam2Model / Sam2Processor
+accelerate>=1.0
+gguf>=0.10
+huggingface_hub>=0.34      # provides the `hf` CLI (hf auth login)
+sentencepiece
+protobuf
+safetensors
+pillow>=10
+opencv-python>=4.9
+numpy>=1.26
+gradio>=6.0
+pyyaml
+psutil
+pytest
+ultralytics>=8.4          # Phase 5 detector critic (YOLO26n)
+mlx-vlm>=0.7; sys_platform == "darwin"   # Phase 7 VLM on Apple Silicon (Qwen3-VL-4B, 4-bit MLX)
+lpips                     # Phase 8 benchmark metric
+# later phases: open_clip_torch (optional), mflux (Mac fallback)

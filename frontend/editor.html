@@ -1,0 +1,1587 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LumenAI Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Imbue:opsz,wght@10..100,400..700&family=GFS+Didot&display=swap">
+<style>
+/* LumenAI editor: top bar / left tool rail / canvas with live self-check / right context panel / prompt bar. Talks to the Modal API (see API below). */
+:root {
+  --olive: #555934; --olive-deep: #3e4124; --cream: #F2E6D8; --cream-hi: #f8f1e8; --paper: #fbf7f1;
+  --ink: #141410; --ink-soft: #3a3a30; --line: #ddd0bc; --ok: #4f6b2f;
+  --display: "Imbue", "Didot", "Bodoni 72", Georgia, serif; --body: "Didot", "GFS Didot", "Bodoni 72", Georgia, serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--cream); color: var(--ink); font: 400 18px/1.45 var(--body); overflow: hidden; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--olive); outline-offset: 2px; }
+.icon { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.app { height: 100%; display: grid; grid-template-columns: 196px minmax(0, 1fr) 360px; grid-template-rows: 72px minmax(0, 1fr); }
+
+/* top bar */
+.top { grid-column: 1 / -1; display: flex; align-items: center; gap: 18px; padding: 0 18px; border-bottom: 1px solid var(--line); background: var(--cream); }
+.logo { font: 600 34px/1 var(--display); text-decoration: none; color: var(--ink); }
+.file { display: flex; align-items: center; gap: 8px; color: var(--ink-soft); padding-left: 18px; font-size: 19px; border-left: 1px solid var(--line); min-width: 0; }
+.file b { color: var(--ink); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top .mid { flex: 1; display: flex; justify-content: center; gap: 6px; }
+.ghost { display: inline-flex; align-items: center; gap: 6px; height: 42px; padding: 0 14px; font-size: 18px; border-radius: 10px; border: 0; background: none; cursor: pointer; color: var(--ink); }
+.ghost:hover { background: rgba(85, 89, 52, .1); }
+.ghost[aria-pressed="true"] { background: rgba(85, 89, 52, .16); }
+.zoom { font-variant-numeric: tabular-nums; color: var(--ink-soft); padding: 0 6px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 24px; font-size: 19px; border-radius: 999px; border: 0; background: var(--olive); color: var(--cream); font-weight: 500; cursor: pointer; text-decoration: none; }
+.btn:hover { background: var(--olive-deep); }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--cream-hi); display: grid; place-items: center; border: 1px solid var(--line); }
+
+/* left rail */
+.rail { border-right: 1px solid var(--line); padding: 6px 8px 14px; display: flex; flex-direction: column; gap: 2px; background: var(--cream); overflow-y: auto; }
+.grp { display: grid; gap: 1px; }
+.gh { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: none; cursor: pointer; padding: 10px 8px 3px;
+      font: 500 13px/1 var(--body); letter-spacing: .09em; text-transform: uppercase; color: var(--ink-soft); }
+.gh::after { content: ""; width: 6px; height: 6px; border-right: 1.5px solid; border-bottom: 1.5px solid; transform: rotate(45deg) translate(-2px, -2px); transition: transform .2s; margin-right: 6px; }
+.gh[aria-expanded="false"]::after { transform: rotate(-45deg); }
+.gh[aria-expanded="false"] + .gt { display: none; }
+.gh.has-active { color: var(--olive); font-weight: 600; }
+.gt { display: grid; gap: 1px; }
+.tool { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 10px; border-radius: 12px; border: 0; background: none; cursor: pointer; font-size: 16px; color: var(--ink); text-align: left; }
+.tool .icon { width: 22px; height: 22px; color: var(--ink); }
+.tool:hover { background: rgba(85, 89, 52, .1); }
+.tool[aria-pressed="true"] { background: var(--olive); color: var(--cream); }
+.tool[aria-pressed="true"] .icon { color: var(--cream); }
+.rail hr { width: 60%; border: 0; border-top: 1px solid var(--line); margin: 8px auto; }
+
+/* stage */
+.stage { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; min-width: 0; background:
+         radial-gradient(circle at 50% 40%, rgba(255,255,255,.45), transparent 60%), var(--cream); }
+.canvas-wrap { position: relative; display: grid; place-items: center; padding: 28px 28px 8px; min-height: 0; }
+.canvas { position: relative; width: 480px; height: 480px; border-radius: 6px; overflow: hidden; box-shadow: 0 24px 50px -30px rgba(62, 65, 36, .55);
+          background: #fff repeating-conic-gradient(#ece4d8 0 25%, #fff 0 50%) 0 0 / 22px 22px; touch-action: none; }
+.canvas img { width: 100%; height: 100%; object-fit: contain; display: block; user-select: none; -webkit-user-drag: none; }
+.after-wrap { position: absolute; inset: 0; clip-path: inset(0 0 0 50%); }
+.canvas .after { position: absolute; inset: 0; }
+.divider { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: #fff; transform: translateX(-1px); }
+.divider span { position: absolute; top: 50%; left: 50%; width: 34px; height: 34px; transform: translate(-50%, -50%); background: #fff; border-radius: 50%; display: grid; place-items: center; box-shadow: 0 4px 12px rgba(0,0,0,.18); }
+.divider[hidden] { display: none; }
+.label { position: absolute; top: 12px; padding: 5px 12px; border-radius: 999px; background: rgba(248, 241, 232, .92); font-size: 15px; }
+.label.l { left: 12px; } .label.r { right: 12px; }
+.marquee[hidden], .label[hidden] { display: none; }
+.marquee { position: absolute; border: 1.5px dashed #fff; outline: 1.5px dashed var(--olive); outline-offset: -3px; border-radius: 10px; pointer-events: none; }
+
+.check { position: absolute; top: 14px; right: 18px; z-index: 5; width: 320px; transition: border-color .4s, box-shadow .4s; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; box-shadow: 0 18px 40px -26px rgba(62,65,36,.6); }
+.check h3 { margin: 0 0 4px; font: 600 26px/1.05 var(--display); display: flex; justify-content: space-between; }
+.check .sub { color: var(--ink-soft); font-size: 16px; margin: 0 0 10px; }
+.check ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.check li { display: grid; grid-template-columns: 22px 1fr; gap: 9px; align-items: start; font-size: 17px; }
+.check li .st { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line); margin-top: 1px; display: grid; place-items: center; }
+.check li.done .st { background: var(--ok); border-color: var(--ok); }
+.check li.done .st::after { content: ""; width: 8px; height: 4px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg) translate(1px, -1px); }
+.check li.fix .st { border-color: #a46b1f; border-top-color: transparent; animation: spin 1s linear infinite; }
+.check li.fix { color: #7a4f12; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.check .route { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 15px; color: var(--ink-soft); display: flex; justify-content: space-between; gap: 8px; }
+.check .route a { color: var(--olive); font-weight: 500; }
+.check .route[hidden] { display: none; }
+.check[hidden] { display: none; }
+
+/* ---------------- LumenAI processing signature: canvas shimmer / container breathing / status card ---------------- */
+.canvas img { transition: filter .36s cubic-bezier(.2, .9, .2, 1), transform .42s cubic-bezier(.2, .9, .2, 1); }
+.after-wrap { transition: opacity .45s ease .05s; }
+.shimmer, .grain { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .35s ease; }
+/* layer 1: a soft band of light drifting across the photo, plus fine film grain */
+.shimmer { background: linear-gradient(105deg, transparent 28%, rgba(255, 246, 228, .22) 42%, rgba(255, 255, 255, .55) 50%, rgba(255, 246, 228, .22) 58%, transparent 72%);
+           background-size: 260% 100%; mix-blend-mode: overlay; }
+.grain { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+         mix-blend-mode: overlay; }
+.processing .canvas img { filter: blur(1.6px) saturate(.4) brightness(.86) contrast(.84); transform: scale(1.014); }
+.processing .after-wrap { opacity: 0; }
+.processing .divider, .processing .label { opacity: 0; }
+.divider, .label { transition: opacity .3s ease; }
+.processing .shimmer { opacity: 1; animation: lumen-sweep 3.6s cubic-bezier(.45, 0, .25, 1) infinite; }
+.processing .grain { opacity: .14; animation: lumen-grain .9s steps(4) infinite; }
+@keyframes lumen-sweep { from { background-position: 130% 0; } to { background-position: -30% 0; } }
+@keyframes lumen-grain { 0% { transform: translate(0, 0); } 25% { transform: translate(-6px, 4px); } 50% { transform: translate(5px, -3px); } 75% { transform: translate(-3px, -6px); } 100% { transform: translate(0, 0); } }
+/* layer 2: the frame breathes - shadow slowly deepens and drifts */
+.processing .canvas { animation: lumen-breathe 5.6s ease-in-out infinite; }
+@keyframes lumen-breathe {
+  0%, 100% { box-shadow: 0 24px 50px -30px rgba(62, 65, 36, .55); transform: translateY(0); }
+  50% { box-shadow: 6px 38px 72px -28px rgba(62, 65, 36, .62); transform: translateY(-2px); }
+}
+/* completion: a tiny settle as the image comes into focus */
+.settled .canvas { animation: lumen-settle .5s cubic-bezier(.2, .9, .2, 1); }
+@keyframes lumen-settle { 0% { transform: scale(1.004); } 100% { transform: scale(1); } }
+/* layer 3: status card */
+.check .status { display: flex; align-items: center; gap: 9px; margin: 0 0 12px; font-size: 16px; color: var(--ink); min-height: 24px; }
+.check .status .dotp { width: 9px; height: 9px; border-radius: 50%; background: var(--olive); flex: none; }
+.processing .check .status .dotp { animation: lumen-pulse 1.4s ease-in-out infinite; }
+@keyframes lumen-pulse { 0%, 100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.1); } }
+.check .status-text { transition: opacity .25s ease, transform .25s ease; }
+.check .status-text.swap { opacity: 0; transform: translateY(4px); }
+.check li { transition: opacity .35s ease, transform .35s ease; }
+.check li.pending { opacity: 0; transform: translateY(6px); height: 0; overflow: hidden; margin-top: -8px; }
+.check li.work .st { border-color: var(--olive); border-top-color: transparent; animation: spin 1s linear infinite; }
+.check li.done .st { transition: background .25s, border-color .25s; }
+.settled .check { border-color: var(--olive); box-shadow: 0 18px 40px -26px rgba(62,65,36,.6), 0 0 0 1px rgba(85, 89, 52, .25); }
+@media (prefers-reduced-motion: reduce) {
+  .processing .shimmer, .processing .grain, .processing .canvas, .settled .canvas, .processing .check .status .dotp { animation: none !important; }
+  .processing .shimmer { opacity: .5; }
+}
+
+/* prompt bar */
+.prompt-zone { padding: 10px 28px 22px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; justify-items: center; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.chip { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 8px 16px; font-size: 16px; cursor: pointer; }
+.chip:hover { border-color: var(--olive); }
+.chip .icon { width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
+.prompt { width: min(820px, 100%); display: flex; align-items: center; gap: 8px; background: var(--paper); border: 1.5px solid var(--olive); border-radius: 22px; padding: 8px 8px 8px 10px; box-shadow: 0 16px 34px -26px rgba(62,65,36,.7); }
+.prompt input { flex: 1; min-width: 0; border: 0; background: none; font: 400 20px/1.4 var(--body); padding: 10px 6px; outline: none; color: var(--ink); }
+.prompt input::placeholder { color: #8d8a7c; }
+.round { width: 42px; height: 42px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer; background: none; flex: none; }
+.round:hover { background: rgba(85, 89, 52, .1); }
+.send { background: var(--olive); color: var(--cream); }
+.send:hover { background: var(--olive-deep); }
+.model { position: relative; flex: none; }
+.model-btn { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px 0 14px; border: 1px solid var(--line); border-radius: 999px; background: none; cursor: pointer; font-size: 16px; white-space: nowrap; }
+.model-btn:hover { border-color: var(--olive); }
+.model-btn b { font-weight: 600; }
+.model-btn small { color: var(--ink-soft); font-size: 14px; }
+.model-btn .icon { width: 14px; height: 14px; }
+.model-menu { position: absolute; right: 0; bottom: calc(100% + 10px); width: 320px; margin: 0; padding: 6px; list-style: none; background: var(--paper); border: 1px solid var(--line);
+              border-radius: 16px; box-shadow: 0 24px 50px -24px rgba(20, 20, 16, .45); z-index: 30; }
+.model-menu[hidden] { display: none; }
+.model-menu li { display: grid; grid-template-columns: 1fr auto; column-gap: 8px; padding: 10px 12px; border-radius: 12px; cursor: pointer; }
+.model-menu li:hover, .model-menu li:focus { background: rgba(85, 89, 52, .1); outline: none; }
+.model-menu li b { font: 600 19px/1.15 var(--display); }
+.model-menu li small { grid-column: 1; color: var(--ink-soft); font-size: 14px; line-height: 1.3; }
+.model-menu li .tick { grid-column: 2; grid-row: 1 / span 2; align-self: center; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line); }
+.model-menu li[aria-selected="true"] .tick { background: var(--olive); border-color: var(--olive); box-shadow: inset 0 0 0 3px var(--paper); }
+
+/* right panel */
+.side { border-left: 1px solid var(--line); background: var(--cream); overflow-y: auto; padding: 18px; display: grid; align-content: start; gap: 22px; }
+.side h2 { font: 600 28px/1.05 var(--display); margin: 0 0 10px; display: flex; align-items: center; justify-content: space-between; }
+.side .muted { color: var(--ink-soft); font-size: 16px; }
+.panel-card { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+.swatches { display: flex; gap: 8px; margin: 10px 0 12px; }
+.sw { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--paper); box-shadow: 0 0 0 1px var(--line); cursor: pointer; }
+.sw[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--olive); }
+input[type=range] { width: 100%; accent-color: var(--olive); }
+.hue-track { height: 10px; border-radius: 999px; background: linear-gradient(90deg, #6b6b2f, #8a6a22, #9b3f2e, #7b3c7e, #36508f, #2f7a6b, #6b6b2f); margin-top: 6px; }
+.vars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.vars button { border: 0; padding: 0; border-radius: 10px; overflow: hidden; aspect-ratio: 1; cursor: pointer; outline: 2px solid transparent; }
+.vars button[aria-pressed="true"] { outline-color: var(--olive); outline-offset: 2px; }
+.vars img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hist { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; }
+.hist li { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; font-size: 17px; }
+.hist li.cur { background: rgba(85, 89, 52, .12); font-weight: 500; }
+.hist .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.hist li.cur .dot { background: var(--olive); }
+.hist time { margin-left: auto; color: var(--ink-soft); font-size: 15px; font-variant-numeric: tabular-nums; }
+.ideas { display: flex; flex-wrap: wrap; gap: 6px; }
+.demo-note { font-size: 15px; color: var(--ink-soft); border: 1px dashed var(--line); border-radius: 12px; padding: 10px 12px; }
+
+@media (min-width: 1200px) { .canvas-wrap { padding-right: 362px; } }
+@media (max-width: 1100px) {
+  .app { grid-template-columns: 86px minmax(0, 1fr); } .side { display: none; } .check { width: 250px; }
+  .rail { padding: 4px 6px 12px; }
+  .gh { font-size: 0; padding: 0; margin: 6px 8px; height: 1px; background: var(--line); pointer-events: none; }
+  .gh::after { display: none; }
+  .gh[aria-expanded="false"] + .gt { display: grid; }
+  .tool { flex-direction: column; gap: 4px; padding: 8px 2px; font-size: 12.5px; text-align: center; justify-content: center; }
+}
+@media (max-width: 700px) {
+  body { overflow: auto; }
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 56px auto auto; height: auto; min-height: 100%; }
+  .rail { flex-direction: row; overflow-x: auto; min-width: 0; border-right: 0; border-bottom: 1px solid var(--line); order: 2; padding: 6px; }
+  .grp, .gt { display: contents; }
+  .gh { display: none; }
+  .tool { min-width: 72px; }
+  .rail hr { display: none; }
+  .top .mid, .file { display: none; }
+  .top { justify-content: space-between; }
+  .stage { order: 3; }
+  .canvas-wrap { padding: 16px; }
+  .canvas { height: auto; width: 100%; }
+  .check { position: static; margin: 12px 16px 0; width: calc(100% - 32px); }
+  .prompt-zone { padding: 10px 16px 20px; }
+  .model-btn small { display: none; }
+}
+
+/* ---------------- live editor additions ---------------- */
+.conn { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; color: var(--ink-soft); padding: 0 10px; white-space: nowrap; }
+.conn i { width: 9px; height: 9px; border-radius: 50%; background: #b9a98f; flex: none; }
+.conn.ready i { background: var(--ok); }
+.conn.waking i { background: #c28a2c; animation: lumen-pulse 1.4s ease-in-out infinite; }
+.conn.off i { background: #a23b2a; }
+.ghost:disabled { opacity: .35; cursor: default; background: none; }
+.sel { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.canvas.picking { cursor: crosshair; }
+.canvas.picking.wait { cursor: progress; }
+.processing .sel { opacity: .25; }
+.check li.bad .st { border-color: #a23b2a; background: #a23b2a; color: #fff; font-size: 13px; line-height: 1; }
+.check li.bad .st::after { content: "\00d7"; }
+.check li.bad { color: #7c2d20; }
+.check li .note { display: block; font-size: 14px; color: var(--ink-soft); }
+.check .route { flex-wrap: wrap; }
+.check .route .links { display: flex; gap: 14px; flex-wrap: wrap; }
+.check .route a[hidden] { display: none; }
+.check .empty { color: var(--ink-soft); font-size: 16px; margin: 0; }
+.btn.sm { height: 40px; padding: 0 18px; font-size: 17px; }
+.btn.line { background: none; color: var(--olive); border: 1.5px solid var(--olive); }
+.btn.line:hover { background: rgba(85, 89, 52, .1); }
+.btn:disabled, .btn.line:disabled { opacity: .45; cursor: default; }
+.ghost.open { border: 1px solid var(--line); }
+.panel-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip[aria-pressed="true"] { background: var(--olive); color: var(--cream); border-color: var(--olive); }
+.chip:disabled { opacity: .5; cursor: default; }
+.panel-card p { margin: 6px 0 0; }
+.panel-card .field { width: 100%; margin-top: 10px; border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; font: 400 17px/1.3 var(--body); background: #fff; color: var(--ink); }
+.panel-card label.tick { display: flex; gap: 8px; align-items: center; margin-top: 12px; font-size: 16px; }
+.hue-track { background: linear-gradient(90deg, hsl(0 55% 45%), hsl(60 55% 45%), hsl(120 55% 45%), hsl(180 55% 45%), hsl(240 55% 45%), hsl(300 55% 45%), hsl(360 55% 45%)); }
+.selinfo { font-size: 15px; color: var(--ink-soft); margin-top: 10px; min-height: 22px; }
+.idea { display: grid; gap: 2px; text-align: left; width: 100%; border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 9px 12px; cursor: pointer; font-size: 17px; }
+.idea small { color: var(--ink-soft); font-size: 14px; }
+.idea[aria-pressed="true"] { border-color: var(--olive); box-shadow: 0 0 0 1px var(--olive); }
+.ideas-list { display: grid; gap: 6px; margin-top: 10px; }
+.vars .more { background: var(--paper); border: 1.5px dashed var(--line); display: grid; place-items: center; color: var(--olive); font-size: 15px; outline: 0; }
+.vars .more:disabled { opacity: .5; cursor: default; }
+.hist li { cursor: pointer; }
+.hist li:hover { background: rgba(85, 89, 52, .07); }
+.hist li.future { opacity: .45; }
+.tags { display: flex; gap: 6px; flex: none; }
+.tag { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; background: rgba(85, 89, 52, .12); padding: 4px 6px 4px 10px; font-size: 14px; white-space: nowrap; }
+.tag img { width: 22px; height: 22px; border-radius: 6px; object-fit: cover; }
+.tag button { border: 0; background: none; cursor: pointer; padding: 0 4px; font-size: 16px; line-height: 1; color: var(--ink-soft); }
+.tag[hidden] { display: none; }
+.empty-stage { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; background: rgba(248, 241, 232, .94); }
+.empty-stage[hidden] { display: none; }
+.empty-stage h3 { font: 600 34px/1.05 var(--display); margin: 0 0 8px; }
+.drag-over .canvas { outline: 3px dashed var(--olive); outline-offset: 6px; }
+.toast { position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 20px); background: var(--ink); color: var(--cream); padding: 10px 18px; border-radius: 12px; font-size: 16px; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 50; max-width: min(90vw, 560px); }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+dialog.v3d { border: 0; padding: 0; border-radius: 18px; width: min(920px, 94vw); height: min(680px, 86vh); background: var(--paper); box-shadow: 0 30px 80px -30px rgba(20, 20, 16, .6); }
+dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
+.v3d .bar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.v3d .bar h3 { margin: 0; font: 600 28px/1 var(--display); flex: 1; }
+.v3d .view { position: relative; height: calc(100% - 66px); background: radial-gradient(circle at 50% 40%, #fff, var(--cream)); }
+.v3d .view canvas { display: block; width: 100%; height: 100%; }
+.v3d .hint { position: absolute; left: 16px; bottom: 12px; font-size: 15px; color: var(--ink-soft); }
+.v3d .load { position: absolute; inset: 0; display: grid; place-items: center; font-size: 18px; color: var(--ink-soft); }
+.v3d .load[hidden] { display: none; }
+.side .x { display: none; }
+@media (max-width: 1100px) {
+  .side { display: grid; position: fixed; right: 12px; bottom: 12px; width: min(380px, calc(100% - 24px)); max-height: 62vh; z-index: 20; border: 1px solid var(--line);
+          border-radius: 18px; box-shadow: 0 24px 60px -24px rgba(20, 20, 16, .45); transform: translateY(calc(100% + 24px)); transition: transform .3s ease; }
+  .app.panel-open .side { transform: none; }
+  .side .x { display: inline-grid; }
+  .side > :not(#ctx) { display: none; }
+}
+@media (max-width: 700px) { .conn span { display: none; } .tags .tag span { display: none; } }
+.marquee.edit { pointer-events: auto; cursor: move; background: rgba(255, 255, 255, .12); }
+.marquee .grip { display: none; position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; border-radius: 4px; background: #fff; border: 2px solid var(--olive); cursor: nwse-resize; }
+.marquee.edit .grip { display: block; }
+.idea.trend { cursor: default; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 10px; }
+.idea.trend b { font-weight: 500; grid-column: 1; }
+.idea.trend small { grid-column: 1; }
+.idea.trend .btn { grid-column: 2; grid-row: 1 / span 2; height: 36px; padding: 0 14px; font-size: 16px; }
+.src { font-size: 14px !important; margin-top: 10px !important; }
+.src a { color: var(--olive); }
+.canvas img:not([src]) { visibility: hidden; }
+.boxsel { position: absolute; border: 1.5px dashed #fff; outline: 1.5px dashed var(--ink); outline-offset: -3px; background: rgba(85, 89, 52, .12); pointer-events: none; z-index: 3; }
+.boxsel[hidden] { display: none; }
+.empty-stage .or { margin: 18px 0 4px; }
+.empty-stage .row { justify-content: center; }
+.chips[hidden] { display: none; }
+/* v10 tools */
+.brush-cur { position: absolute; border: 1.5px solid #fff; outline: 1px solid var(--ink); border-radius: 50%; pointer-events: none; z-index: 4; transform: translate(-50%, -50%); }
+.brush-cur[hidden] { display: none; }
+.canvas.brushing { cursor: none; }
+.move-prev { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .35)); }
+.move-prev[hidden] { display: none; }
+.canvas.moving { cursor: grab; }
+.thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.thumbs .th { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: #fff; }
+.thumbs .th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumbs .th button { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: rgba(20, 20, 16, .7); color: #fff; cursor: pointer; font-size: 14px; line-height: 1; }
+.refbox { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px; border: 1px dashed var(--line); border-radius: 12px; font-size: 15px; }
+.refbox img { width: 54px; height: 54px; border-radius: 8px; object-fit: cover; }
+.range-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 15px; color: var(--ink-soft); }
+.range-row input { flex: 1; }
+.range-row output { min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+.media .view { display: grid; place-items: center; background: #141410; }
+.media video, .media canvas { max-width: 100%; max-height: 100%; display: block; }
+.media .bar .row { margin: 0; }
+.media .bar .chip { padding: 6px 12px; font-size: 15px; }
+.media .hint { color: #d8cfc0; }
+.runstats h2 { font-size: 24px; margin-bottom: 8px; }
+.runstats h2 .muted { font: 400 15px/1.2 var(--body); text-align: right; }
+.rs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rs-grid > div { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; display: grid; gap: 2px; }
+.rs-grid .k { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.rs-grid b { font: 600 28px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.rs-meter { position: relative; height: 8px; border-radius: 999px; background: rgba(85, 89, 52, .14); margin-top: 12px; }
+.rs-meter i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 999px; background: var(--olive); transition: width .6s cubic-bezier(.2, .9, .2, 1); }
+.rs-meter span { position: absolute; right: 0; top: 12px; font-size: 13px; color: var(--ink-soft); }
+.rs-note { font-size: 14px; color: var(--ink-soft); margin: 22px 0 0; }
+.tip { font-size: 14px; color: var(--ink-soft); margin-top: 8px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-select" viewBox="0 0 24 24"><path d="M5 3l12 6.5-5.2 1.6L9.6 16z"/><path d="M4 20h2M10 20h2M16 20h2M20 14v2M20 8v2"/></symbol>
+  <symbol id="i-eraser" viewBox="0 0 24 24"><path d="M7 21h13"/><path d="M5.6 15.6l8.5-8.5a2 2 0 0 1 2.8 0l2.4 2.4a2 2 0 0 1 0 2.8L13 18.6a2 2 0 0 1-1.4.6H8.4a2 2 0 0 1-1.4-.6l-1.4-1.4a1.1 1.1 0 0 1 0-1.6z"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.2"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.8-1.7H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.1"/><circle cx="10" cy="7.3" r="1.1"/><circle cx="14.6" cy="7.4" r="1.1"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 2.8l8 4.5v9.4l-8 4.5-8-4.5V7.3z"/><path d="M4 7.3l8 4.5 8-4.5M12 11.8v9.4"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2V16h5v-.2c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3z"/></symbol>
+  <symbol id="i-scissors" viewBox="0 0 24 24"><circle cx="6" cy="6.5" r="2.5"/><circle cx="6" cy="17.5" r="2.5"/><path d="M8.2 7.8L20 18M8.2 16.2L20 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7L4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 0 12"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 7l5 5-5 5"/><path d="M20 12H10a6 6 0 0 0 0 12"/></symbol>
+  <symbol id="i-compare" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M12 4.5v15"/><path d="M8 10l-2 2 2 2M16 10l2 2-2 2"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.2-4 4.2-6 8-6s6.8 2 8 6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M5 12h13M13 6.5l5.5 5.5-5.5 5.5"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-9 9"/></symbol>
+  <symbol id="i-arrows" viewBox="0 0 24 24"><path d="M9 7l-5 5 5 5M15 7l5 5-5 5"/></symbol>
+  <symbol id="i-brush" viewBox="0 0 24 24"><path d="M14.5 4.5l5 5-8.2 8.2-5-5z"/><path d="M6.3 12.7c-2 .3-3 1.9-3 3.8 0 1.6-.6 2.6-1.3 3 2.4.6 6.3.3 7.3-2.6"/></symbol>
+  <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><path d="M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></symbol>
+  <symbol id="i-wand" viewBox="0 0 24 24"><path d="M4 20L15 9"/><path d="M14 4v3M18.5 5.5l-2 2M20 10h-3M12 6.5L10.5 5"/><path d="M13 7l4 4"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="8" height="10" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="6" rx="1.5"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.5"/><rect x="3.5" y="15.5" width="8" height="5" rx="1.5"/></symbol>
+  <symbol id="i-new" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M12 8v8M8 12h8"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+  <symbol id="i-aperture" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5l3.5 6M20.4 10.5l-6.9.3M17.5 18.3l-3.4-6M8.5 20l3.5-6M3.6 13.5l6.9-.3M6.5 5.7l3.4 6"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M7.5 5v14M16.5 5v14M3.5 9.5h4M3.5 14.5h4M16.5 9.5h4M16.5 14.5h4"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10 8.5l5.5 3.5-5.5 3.5z"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M7 14l5-5 5 5"/></symbol>
+</defs></svg>
+
+<div class="app" id="app">
+  <header class="top">
+    <a class="logo" href="index.html">LumenAI</a>
+    <div class="file"><svg class="icon"><use href="#i-image"/></svg><b id="fileName">Photo</b></div>
+    <div class="mid" role="toolbar" aria-label="Edit history and view">
+      <button class="ghost" id="undoBtn" aria-label="Undo" title="Undo (Ctrl+Z)"><svg class="icon"><use href="#i-undo"/></svg></button>
+      <button class="ghost" id="redoBtn" aria-label="Redo" title="Redo (Ctrl+Shift+Z)"><svg class="icon"><use href="#i-redo"/></svg></button>
+      <button class="ghost" id="revertBtn" title="Go back to the photo you started with (undo brings your edits back)">Revert to original</button>
+      <button class="ghost" id="cmpBtn" aria-pressed="true"><svg class="icon"><use href="#i-compare"/></svg>Before / after</button>
+      <button class="ghost" id="openBtn"><svg class="icon"><use href="#i-plus"/></svg>Open photo</button>
+    </div>
+    <span class="conn" id="conn" title=""><i></i><span id="connText">Connecting</span></span>
+    <a class="btn" href="#" id="exportBtn" title="Download this version. LumenAI images carry an invisible watermark."><svg class="icon"><use href="#i-download"/></svg>Export</a>
+    <input type="file" id="fileIn" accept="image/*" hidden><input type="file" id="multiIn" accept="image/*" multiple hidden>
+  </header>
+
+  <nav class="rail" aria-label="Tools">
+    <div class="grp" data-g="select"><button class="gh" type="button" aria-expanded="true">Select</button><div class="gt">
+      <button class="tool" aria-pressed="true" data-tool="select"><svg class="icon"><use href="#i-select"/></svg>Select</button><button class="tool" aria-pressed="false" data-tool="brush"><svg class="icon"><use href="#i-brush"/></svg>Brush</button>
+    </div></div>
+    <div class="grp" data-g="edit"><button class="gh" type="button" aria-expanded="true">Edit</button><div class="gt">
+      <button class="tool" aria-pressed="false" data-tool="remove"><svg class="icon"><use href="#i-eraser"/></svg>Remove</button><button class="tool" aria-pressed="false" data-tool="move"><svg class="icon"><use href="#i-move"/></svg>Move</button><button class="tool" aria-pressed="false" data-tool="recolour"><svg class="icon"><use href="#i-palette"/></svg>Recolour</button><button class="tool" aria-pressed="false" data-tool="expand"><svg class="icon"><use href="#i-expand"/></svg>Expand</button><button class="tool" aria-pressed="false" data-tool="ideas"><svg class="icon"><use href="#i-bulb"/></svg>Add object</button>
+    </div></div>
+    <div class="grp" data-g="create"><button class="gh" type="button" aria-expanded="true">Create</button><div class="gt">
+      <button class="tool" aria-pressed="false" data-tool="create"><svg class="icon"><use href="#i-new"/></svg>New image</button><button class="tool" aria-pressed="false" data-tool="product"><svg class="icon"><use href="#i-bag"/></svg>Product shot</button><button class="tool" aria-pressed="false" data-tool="style"><svg class="icon"><use href="#i-wand"/></svg>Style</button><button class="tool" aria-pressed="false" data-tool="pose"><svg class="icon"><use href="#i-user"/></svg>Pose</button><button class="tool" aria-pressed="false" data-tool="collage"><svg class="icon"><use href="#i-grid"/></svg>Collage</button><button class="tool" aria-pressed="false" data-tool="trends"><svg class="icon"><use href="#i-trend"/></svg>Trends</button>
+    </div></div>
+    <div class="grp" data-g="enhance"><button class="gh" type="button" aria-expanded="true">Enhance</button><div class="gt">
+      <button class="tool" aria-pressed="false" data-tool="upscale"><svg class="icon"><use href="#i-sparkle"/></svg>Upscale</button><button class="tool" aria-pressed="false" data-tool="relight"><svg class="icon"><use href="#i-sun"/></svg>Relight</button><button class="tool" aria-pressed="false" data-tool="bokeh"><svg class="icon"><use href="#i-aperture"/></svg>Bokeh</button><button class="tool" aria-pressed="false" data-tool="cutout"><svg class="icon"><use href="#i-scissors"/></svg>Cut out</button>
+    </div></div>
+    <div class="grp" data-g="motion"><button class="gh" type="button" aria-expanded="true">Motion &amp; 3D</button><div class="gt">
+      <button class="tool" aria-pressed="false" data-tool="3d"><svg class="icon"><use href="#i-cube"/></svg>View in 3D</button><button class="tool" aria-pressed="false" data-tool="dolly"><svg class="icon"><use href="#i-film"/></svg>Dolly video</button>
+    </div></div>
+    <div class="grp" data-g="session"><button class="gh" type="button" aria-expanded="true">Session</button><div class="gt">
+      <button class="tool" aria-pressed="false" data-tool="history"><svg class="icon"><use href="#i-clock"/></svg>History</button>
+    </div></div>
+  </nav>
+
+  <main class="stage" id="stage">
+    <div class="canvas-wrap" id="work">
+      <div class="canvas" id="canvas">
+        <img id="before" alt="Before the last edit">
+        <div class="after-wrap" id="afterWrap"><img id="after" class="after" alt="Your photo"></div>
+        <canvas class="sel" id="selCanvas" aria-hidden="true"></canvas>
+        <canvas class="move-prev" id="movePrev" aria-hidden="true" hidden></canvas>
+        <div class="brush-cur" id="brushCur" hidden></div>
+        <div class="marquee" id="marquee" hidden></div>
+        <div class="divider" id="divider"><span><svg class="icon" style="width:16px;height:16px"><use href="#i-arrows"/></svg></span></div>
+        <span class="label l" id="lblB">Before</span><span class="label r" id="lblA">After</span>
+        <div class="shimmer" aria-hidden="true"></div><div class="grain" aria-hidden="true"></div>
+        <div class="boxsel" id="boxSel" hidden></div>
+        <div class="empty-stage" id="emptyStage" hidden><div><h3>Start with a photo</h3>
+          <p class="muted">Drop one here, or</p><button class="btn sm" id="emptyOpen">Choose a photo</button>
+          <p class="muted or">or create one: describe it in the box below</p>
+          <div class="row" id="genRatios" role="group" aria-label="Shape of the new image">
+            <button class="chip" data-g="1:1">Square</button><button class="chip" data-g="4:5">Portrait 4:5</button>
+            <button class="chip" data-g="3:2">Landscape 3:2</button><button class="chip" data-g="16:9">Wide 16:9</button><button class="chip" data-g="9:16">Story 9:16</button></div></div></div>
+      </div>
+      <section class="check" id="check">
+        <h3><span id="checkTitle">Ready when you are</span> <span class="muted" id="checkTime"></span></h3>
+        <p class="sub" id="checkSub">Pick a tool, or describe your edit below.</p>
+        <p class="status" aria-live="polite"><span class="dotp" aria-hidden="true"></span><span class="status-text" id="statusText">Connecting to the AI</span></p>
+        <ul id="checkList"></ul>
+        <div class="route" id="routeRow" hidden><span id="routeText"></span>
+          <span class="links"><a href="#" id="anotherLink">Another version</a><a href="#" id="fullLink">Redo with Lux</a><a href="#" id="retryLink" hidden>Try again</a></span></div>
+      </section>
+    </div>
+
+    <div class="prompt-zone">
+      <div class="chips" aria-label="Suggestions">
+        <button class="chip" data-act="cutout">Remove the background</button>
+        <button class="chip">Warm evening light</button>
+        <button class="chip" data-act="expand" data-ratio="16:9">Expand to 16:9</button>
+        <button class="chip">Make it sharper</button>
+        <button class="chip" data-act="trends"><svg class="icon"><use href="#i-trend"/></svg>Trending today</button>
+      </div>
+      <form class="prompt" id="promptForm">
+        <button type="button" class="round" id="refBtn" aria-label="Add a reference photo (for pose or style)" title="Add a reference photo (pose, style, an object to copy)"><svg class="icon"><use href="#i-plus"/></svg></button>
+        <span class="tags">
+          <span class="tag" id="refTag" hidden><img id="refThumb" alt=""><span>Reference</span><button type="button" id="refClear" aria-label="Remove the reference photo">×</button></span>
+          <span class="tag" id="selTag" hidden><span>In selection</span><button type="button" id="selClear" aria-label="Clear the selection">×</button></span>
+        </span>
+        <input id="promptInput" aria-label="Describe your edit" placeholder="Describe your edit, like “make the bottle amber”" autocomplete="off">
+        <div class="model" id="modelPick">
+          <button type="button" class="model-btn" id="modelBtn" aria-haspopup="listbox" aria-expanded="false" title="Choose the AI model"><b id="modelName">Lumen 1.2 – Kroma</b><small id="modelSpeed">~12 s</small><svg class="icon"><use href="#i-chev"/></svg></button>
+          <ul class="model-menu" id="modelMenu" role="listbox" aria-label="AI model" hidden>
+            <li role="option" tabindex="-1" data-m="flash"><b>Lumen 1.1 – Lumina</b><small>Fastest, about 2 s. Great for drafts and quick ideas.</small><span class="tick"></span></li>
+            <li role="option" tabindex="-1" data-m="lumen"><b>Lumen 1.2 – Kroma</b><small>Balanced, about 12 s. Our everyday model.</small><span class="tick"></span></li>
+            <li role="option" tabindex="-1" data-m="pro"><b>Lumen 1.3 – Lux</b><small>Best detail, about 40 s. Rewrites your request into a precise prompt first.</small><span class="tick"></span></li>
+          </ul>
+        </div>
+        <button class="round send" id="sendBtn" aria-label="Make the edit"><svg class="icon"><use href="#i-send"/></svg></button>
+        <input type="file" id="refIn" accept="image/*" hidden>
+      </form>
+    </div>
+  </main>
+
+  <aside class="side" aria-label="Details">
+    <div class="panel-card" id="ctx"></div>
+
+    <div class="runstats" id="runStats" aria-live="polite">
+      <h2>Last run <span class="muted" id="rsModel"></span></h2>
+      <div class="rs-grid">
+        <div><span class="k">Execution time</span><b id="rsTime">–</b></div>
+        <div><span class="k">Peak VRAM</span><b id="rsVram">–</b></div>
+      </div>
+      <div class="rs-meter" aria-hidden="true"><i id="rsBar"></i><span>16 GB budget</span></div>
+      <p class="rs-note" id="rsNote">Run any tool to see how long it took and how much GPU memory it used.</p>
+    </div>
+
+    <div>
+      <h2>Variations</h2>
+      <div class="vars" role="group" aria-label="Variations" id="vars"></div>
+    </div>
+
+    <div id="histBox">
+      <h2>History</h2>
+      <ol class="hist" id="hist"></ol>
+    </div>
+  </aside>
+</div>
+
+<dialog class="v3d" id="v3d" aria-label="3D view">
+  <div class="bar"><h3>View in 3D</h3><a class="btn sm line" id="glbDl" download="lumen-object.glb" href="#">Download .glb</a><button class="btn sm" id="v3dClose">Close</button></div>
+  <div class="view" id="v3dView"><div class="load" id="v3dLoad">Loading the viewer…</div><span class="hint">Drag to turn, scroll to zoom</span></div>
+</dialog>
+<dialog class="v3d media" id="media" aria-label="Video">
+  <div class="bar"><h3 id="mediaTitle">Video</h3><div class="row" id="mediaOpts"></div><a class="btn sm line" id="mediaDl" href="#">Download</a><button class="btn sm" id="mediaClose">Close</button></div>
+  <div class="view" id="mediaView"><div class="load" id="mediaLoad" hidden></div><span class="hint" id="mediaHint"></span></div>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="config.js"></script>
+<script>
+(() => {
+  // ---------------------------------------------------------------- server
+  // the backend URL comes from config.js (window.LUMEN_API); ?api=... in the address overrides it for testing
+  const API = (new URLSearchParams(location.search).get('api') || window.LUMEN_API || 'http://127.0.0.1:8000/api/v1').replace(/\/$/, '');
+  const SEED = 7, MAX_SIDE = 2048;
+  const $ = id => document.getElementById(id);
+  const ROUTE_NAMES = { general: 'instruction edit', recolour: 'precise recolour', remove: 'smart removal', pose: 'pose transfer',
+    deblur: 'motion-blur fix', expand: 'outpaint', add: 'add object', cutout: 'background removal', view3d: '3D model', ideas: 'idea finder',
+    trends: 'Gemini + Google Search', upscale: 'AI upscaler (TADSR)', generate: 'text to image', style: 'style transfer',
+    bokeh: 'depth-aware bokeh (Depth Anything V2)', move: 'move object (smart removal + re-placing)', relight: 'relight (light transfer keeps detail)',
+    product: 'product shoot (Qwen-Image 2.1)', dolly: 'dolly video (depth layers)', collage: 'collage' };
+  const TIERS = { flash: ['Lumen 1.1 – Lumina', '~2 s'], lumen: ['Lumen 1.2 – Kroma', '~12 s'], pro: ['Lumen 1.3 – Lux', '~40 s'] };
+  const TIER_ROUTES = ['general', 'generate', 'style'];
+
+  let online = 'connecting';
+  async function call(path, payload, ms = 15 * 60 * 1000) {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
+    try {
+      const r = await fetch(`${API}/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: ctl.signal });
+      let j = null; try { j = await r.json(); } catch (e) { /* not JSON */ }
+      if (!r.ok) throw new Error((j && j.detail) || `The server answered ${r.status}.`);
+      setConn('ready');
+      return j;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('The AI took too long to answer. Try Lumen 1.1 – Lumina, or try again.');
+      if (e instanceof TypeError) { setConn('off'); throw new Error('Could not reach the AI server. Is it deployed (modal deploy modal_api.py)?'); }
+      throw e;
+    } finally { clearTimeout(t); }
+  }
+  function setConn(s) {
+    online = s; const c = $('conn'); c.className = 'conn ' + s;
+    $('connText').textContent = { connecting: 'Connecting', waking: 'Waking the AI', ready: 'AI ready', off: 'AI offline' }[s];
+    c.title = s === 'waking' ? 'The GPU starts on the first request (1-3 minutes), then stays warm for 10 minutes.' : API;
+  }
+  async function health() {
+    setConn('connecting');
+    const slow = setTimeout(() => { if (online === 'connecting') { setConn('waking'); idleStatus(); } }, 2500);
+    try {
+      const r = await fetch(`${API}/health`, { signal: AbortSignal.timeout ? AbortSignal.timeout(6 * 60 * 1000) : undefined });
+      const j = await r.json(); setConn(j.status === 'ok' ? 'ready' : 'off');
+    } catch (e) { setConn('off'); }
+    clearTimeout(slow); idleStatus();
+  }
+  function idleStatus() {
+    if (busy || !$('checkList').classList.contains('idle')) return;
+    $('statusText').textContent = { connecting: 'Connecting to the AI', waking: 'Waking the AI (the first start takes 1–3 minutes)',
+      ready: 'The AI is ready', off: 'The AI server is not reachable' }[online];
+  }
+
+  // ---------------------------------------------------------------- state
+  const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } } };
+  const S = { hist: [], cur: -1, sel: null, ref: null, model: TIERS[store.get('lumen.model')] ? store.get('lumen.model') : 'lumen', last: null, rcId: null, vars: [], tool: 'select', name: 'Photo', move: null };
+  const qualityOf = m => m === 'pro' ? 'full' : 'quick';
+  let busy = false;
+  const cur = () => S.hist[S.cur];
+  const t0 = Date.now();
+  const stamp = () => { const s = Math.floor((Date.now() - t0) / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 3200); }
+  const loadImg = src => new Promise((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => bad(new Error('Could not open that image.')); i.src = src; });
+
+  // photos go to the server at most 2048 px on the long side (the server works at that size anyway)
+  async function normalise(src) {
+    const im = await loadImg(src);
+    const s = Math.min(1, MAX_SIDE / Math.max(im.naturalWidth, im.naturalHeight));
+    if (s === 1 && src.startsWith('data:image/')) return { src, w: im.naturalWidth, h: im.naturalHeight };
+    const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * s); c.height = Math.round(im.naturalHeight * s);
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    const png = /^data:image\/png/.test(src);
+    return { src: c.toDataURL(png ? 'image/png' : 'image/jpeg', .95), w: c.width, h: c.height };
+  }
+
+  async function openPhoto(src, name) {
+    try {
+      const n = await normalise(src);
+      S.hist = [{ label: 'Original', img: n.src, w: n.w, h: n.h, t: stamp() }]; S.cur = 0;
+      S.name = name || 'Photo'; S.sel = null; S.rcId = null; seenIdeas = []; ideas = []; addBox = null; S.vars = []; S.last = null;
+      $('fileName').textContent = S.name; $('emptyStage').hidden = true;
+      $('promptInput').placeholder = 'Describe your edit, like “make the bottle amber”'; document.querySelector('.prompt-zone .chips').hidden = false;
+      resetCard(); render(); clearSel(); renderPanel();
+    } catch (e) {
+      $('emptyStage').hidden = false;
+      toast(location.protocol === 'file:' ? 'Open the editor through the local server (python3 -m http.server 3001), not as a file.' : e.message);
+    }
+  }
+
+  // ---------------------------------------------------------------- empty start: open a photo or create one
+  let genRatio = '1:1';
+  const GEN_RATIOS = { '1:1': [1, 1], '4:5': [4, 5], '3:2': [3, 2], '16:9': [16, 9], '9:16': [9, 16] };
+  function fitEmpty() {      // no photo yet: give the start panel the whole stage
+    if (cur()) return;
+    if (innerWidth <= 700) { canvas.style.width = '100%'; canvas.style.height = '420px'; canvas.style.aspectRatio = ''; return; }
+    const cs = getComputedStyle(wrap);
+    const aw = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const ah = wrap.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    canvas.style.aspectRatio = ''; canvas.style.width = Math.max(320, aw) + 'px'; canvas.style.height = Math.max(360, Math.min(ah, 620)) + 'px';
+  }
+  addEventListener('resize', fitEmpty);
+  function showEmpty() {
+    S.hist = []; S.cur = -1; S.sel = null; S.last = null; S.vars = [];
+    $('emptyStage').hidden = false; $('fileName').textContent = 'New image';
+    $('promptInput').placeholder = 'Describe an image to create, like “a cozy reading nook at dusk”';
+    document.querySelector('.prompt-zone .chips').hidden = true;
+    fitEmpty();
+    ['undoBtn', 'redoBtn', 'revertBtn'].forEach(id => $(id).disabled = true);
+    after.removeAttribute('src'); before.removeAttribute('src'); div.hidden = true; $('lblA').hidden = $('lblB').hidden = true;
+    $('hist').innerHTML = ''; renderVars(); resetCard();
+    sub.textContent = 'Open a photo, or describe one below and LumenAI will create it.';
+    document.querySelectorAll('#genRatios [data-g]').forEach(o => o.setAttribute('aria-pressed', o.dataset.g === genRatio));
+  }
+  document.querySelectorAll('#genRatios [data-g]').forEach(b => b.onclick = e => { e.stopPropagation(); genRatio = b.dataset.g; showEmpty(); });
+  async function doGenerate(text, keep) {
+    if (busy) return;
+    setBusy(true); run('generate', text.length > 60 ? text.slice(0, 57) + '…' : text);
+    try {
+      const r = await call('generate', { prompt: text, ratio: genRatio, model: S.model, quality: qualityOf(S.model), seed: SEED });
+      const im = await loadImg(r.image);
+      const label = 'Created: ' + (text.length > 40 ? text.slice(0, 37) + '…' : text);
+      if (keep && cur()) {             // "New image" tool: the creation is a new step, the old photo stays in the history
+        if (S.sel) clearSel();
+        S.last = { kind: 'generate', path: 'generate', payload: { prompt: text, ratio: genRatio }, label, base: S.cur, seed: SEED, model: S.model, variable: false };
+        await push(r, label); S.last = null; finish({ ...r, model: S.model }, 'generate'); renderPanel(); setBusy(false); return;
+      }
+      S.hist = [{ label, img: r.image, w: im.naturalWidth, h: im.naturalHeight, t: stamp() }];
+      S.cur = 0; S.name = 'Created image'; $('fileName').textContent = S.name; $('emptyStage').hidden = true;
+      $('promptInput').placeholder = 'Describe your edit, like “make the bottle amber”'; $('promptInput').value = '';
+      document.querySelector('.prompt-zone .chips').hidden = false;
+      S.last = null; render(); finish({ ...r, model: S.model }, 'generate'); renderPanel();
+    } catch (e) { fail(e.message, /can't make this edit|so it was not run/.test(e.message) ? null : () => doGenerate(text, keep)); }
+    setBusy(false);
+  }
+
+  function push(r, label) {
+    return loadImg(r.image).then(im => {
+      S.hist = S.hist.slice(0, S.cur + 1);
+      S.hist.push({ label, img: r.image, w: im.naturalWidth, h: im.naturalHeight, t: stamp(), rcId: r.recolour_id || null });
+      S.cur = S.hist.length - 1;
+      S.vars = [{ img: r.image, seed: S.last ? S.last.seed : SEED }];
+      S.rcId = r.recolour_id || null;
+      const prev = S.hist[S.cur - 1];
+      if (S.sel && (prev.w !== im.naturalWidth || prev.h !== im.naturalHeight)) clearSel();   // the frame changed: old selection no longer fits
+      render();
+    });
+  }
+  function replaceCurrent(r, seed) {
+    return loadImg(r.image).then(im => {
+      Object.assign(cur(), { img: r.image, w: im.naturalWidth, h: im.naturalHeight, rcId: r.recolour_id || cur().rcId });
+      S.rcId = cur().rcId;
+      if (seed !== undefined) S.vars.push({ img: r.image, seed });
+      render();
+    });
+  }
+
+  // ---------------------------------------------------------------- canvas
+  const canvas = $('canvas'), wrap = $('work'), before = $('before'), after = $('after'), afterWrap = $('afterWrap'), div = $('divider');
+  let split = 50;
+  function fit() {
+    const c = cur(); if (!c) return;
+    if (innerWidth <= 700) { canvas.style.width = '100%'; canvas.style.height = 'auto'; canvas.style.aspectRatio = c.w + ' / ' + c.h; return; }
+    const cs = getComputedStyle(wrap);
+    const aw = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const ah = wrap.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const s = Math.max(0.05, Math.min(aw / c.w, ah / c.h));
+    canvas.style.aspectRatio = ''; canvas.style.width = Math.floor(c.w * s) + 'px'; canvas.style.height = Math.floor(c.h * s) + 'px';
+  }
+  addEventListener('resize', fit);
+
+  function render() {
+    const c = cur(); if (!c) return;
+    const prev = S.hist[S.cur - 1];
+    after.src = c.img; before.src = prev ? prev.img : c.img;
+    const cmpOn = $('cmpBtn').getAttribute('aria-pressed') === 'true' && !!prev && !['brush', 'move'].includes(S.tool);   // the divider would catch drags
+    div.hidden = !cmpOn; $('lblB').hidden = !cmpOn; $('lblA').hidden = !cmpOn;
+    afterWrap.style.clipPath = cmpOn ? `inset(0 0 0 ${split}%)` : 'none';
+    div.style.left = split + '%';
+    $('undoBtn').disabled = S.cur <= 0; $('redoBtn').disabled = S.cur >= S.hist.length - 1; $('revertBtn').disabled = S.cur <= 0;
+    const h = $('hist'); h.innerHTML = '';
+    S.hist.forEach((e, i) => {
+      const li = document.createElement('li'); li.className = i === S.cur ? 'cur' : (i > S.cur ? 'future' : '');
+      li.innerHTML = `<span class="dot"></span><span></span><time>${e.t}</time>`; li.children[1].textContent = e.label;
+      li.onclick = () => go(i); h.appendChild(li);
+    });
+    renderVars(); fit();
+  }
+  function go(i) { if (busy || i < 0 || i >= S.hist.length) return; addBox = null; showBox(null); S.cur = i; S.rcId = cur().rcId || null; S.vars = []; render(); drawSel(); }
+
+  // before / after divider
+  let drag = false;
+  const moveSplit = x => { const r = canvas.getBoundingClientRect(); split = Math.min(100, Math.max(0, (x - r.left) / r.width * 100)); render(); };
+  div.addEventListener('pointerdown', e => { drag = true; div.setPointerCapture(e.pointerId); e.stopPropagation(); });
+  div.addEventListener('pointermove', e => drag && moveSplit(e.clientX));
+  div.addEventListener('pointerup', () => drag = false);
+  $('cmpBtn').onclick = () => { const b = $('cmpBtn'); b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'); split = 50; render(); };
+  $('undoBtn').onclick = () => go(S.cur - 1);
+  $('redoBtn').onclick = () => go(S.cur + 1);
+  addEventListener('keydown', e => {
+    if (e.target.matches('input, textarea')) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); go(S.cur + (e.shiftKey ? 1 : -1)); }
+    if (e.key === 'Escape') clearSel();
+  });
+
+  // ---------------------------------------------------------------- selection (click -> SAM 2.1 on the server)
+  const selCanvas = $('selCanvas');
+  const PICK_TOOLS = ['select', 'remove', 'recolour', '3d', 'move', 'bokeh', 'dolly'];
+  let selBusy = false;
+  function imgPoint(e) {
+    const r = canvas.getBoundingClientRect(), c = cur();
+    return [Math.round((e.clientX - r.left) / r.width * c.w), Math.round((e.clientY - r.top) / r.height * c.h)];
+  }
+  canvas.addEventListener('contextmenu', e => { if (PICK_TOOLS.includes(S.tool)) e.preventDefault(); });
+  // drag a box (like a macOS screenshot) -> SAM looks only inside it; a click without dragging -> click selection
+  const boxSel = $('boxSel');
+  let press = null;
+  canvas.addEventListener('pointerdown', e => {
+    if (busy || selBusy || !cur() || e.button !== 0 || e.target.closest('.divider, .empty-stage, .marquee')) return;
+    if (S.tool === 'brush') { canvas.setPointerCapture(e.pointerId); return brushStart(e); }
+    if (S.tool === 'move' && S.sel && hitSel(e)) { canvas.setPointerCapture(e.pointerId); return moveStart(e); }
+    if (!PICK_TOOLS.includes(S.tool) || e.altKey) return;
+    press = { x: e.clientX, y: e.clientY, moved: false };
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (S.tool === 'brush') return brushMove(e);
+    if (mdrag) return moveDrag(e);
+    if (!press) return;
+    if (!press.moved && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 6) return;
+    press.moved = true;
+    const r = canvas.getBoundingClientRect();
+    const cl = v => Math.min(1, Math.max(0, v));
+    const x0 = cl((Math.min(press.x, e.clientX) - r.left) / r.width), x1 = cl((Math.max(press.x, e.clientX) - r.left) / r.width);
+    const y0 = cl((Math.min(press.y, e.clientY) - r.top) / r.height), y1 = cl((Math.max(press.y, e.clientY) - r.top) / r.height);
+    Object.assign(boxSel.style, { left: x0 * 100 + '%', top: y0 * 100 + '%', width: (x1 - x0) * 100 + '%', height: (y1 - y0) * 100 + '%' });
+    boxSel.hidden = false; press.box = [x0, y0, x1, y1];
+  });
+  canvas.addEventListener('pointerup', async e => {
+    if (stroke) return brushEnd();
+    if (mdrag) { mdrag = null; canvas.classList.remove('dragging'); return renderPanel(); }
+    if (drag || busy || selBusy || !cur() || !PICK_TOOLS.includes(S.tool) || e.target.closest('.divider, .empty-stage')) { press = null; return; }
+    const p = press; press = null;
+    if (S.tool === 'bokeh' && cur().bokehId && !(p && p.moved)) return bokehAdjust(imgPoint(e));   // after Bokeh: click = focus here
+    if (p && p.moved && p.box) {
+      const c = cur(), b = p.box;
+      boxSel.hidden = true;
+      if ((b[2] - b[0]) * c.w < 8 || (b[3] - b[1]) * c.h < 8) return;
+      const box = [Math.round(b[0] * c.w), Math.round(b[1] * c.h), Math.round(b[2] * c.w), Math.round(b[3] * c.h)];
+      return segment([], box);
+    }
+    const neg = e.altKey || e.button === 2;
+    const [x, y] = imgPoint(e);
+    const add = e.shiftKey || neg;
+    const points = (add && S.sel ? S.sel.points : []).concat([[x, y, neg ? 0 : 1]]);
+    segment(points, add && S.sel ? S.sel.boxPrompt : null);
+  });
+  async function segment(points, box) {
+    selBusy = true; canvas.classList.add('wait'); selInfo(box && !points.length ? 'Looking inside your box…' : 'Finding the object…');
+    try {
+      const r = await call('segment', { image: cur().img, points, box: box || undefined });
+      S.sel = { mask: r.mask, points, box: r.box, boxPrompt: box || null, area: r.area, at: S.cur };
+      S.rcId = null;                // the slider must not keep recolouring the previously recoloured object
+      S.move = null; resetMoveView();
+      await drawSel(); if (S.tool === 'move') moveSetup(); selInfo(`Selected ${Math.max(1, Math.round(r.area * 100))}% of the photo. Shift-click adds, Alt-click removes a part.`);
+    } catch (err) { selInfo(err.message); }
+    selBusy = false; canvas.classList.remove('wait');
+  }
+  async function drawSel() {
+    const c = cur(), ctx = selCanvas.getContext('2d');
+    if (!S.sel || !c) { ctx.clearRect(0, 0, selCanvas.width, selCanvas.height); $('selTag').hidden = true; return; }
+    const m = await loadImg(S.sel.mask);
+    selCanvas.width = m.naturalWidth; selCanvas.height = m.naturalHeight;
+    ctx.drawImage(m, 0, 0);
+    const d = ctx.getImageData(0, 0, m.naturalWidth, m.naturalHeight), p = d.data, W = m.naturalWidth, H = m.naturalHeight;
+    const on = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) on[i] = p[i * 4] > 127;
+    S.sel.on = on; S.sel.W = W; S.sel.H = H;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x, k = i * 4;
+      if (!on[i]) { p[k + 3] = 0; continue; }
+      const edge = x === 0 || y === 0 || x === W - 1 || y === H - 1 || !on[i - 1] || !on[i + 1] || !on[i - W] || !on[i + W];
+      if (edge) { p[k] = 255; p[k + 1] = 255; p[k + 2] = 255; p[k + 3] = 255; } else { p[k] = 85; p[k + 1] = 89; p[k + 2] = 52; p[k + 3] = 105; }
+    }
+    ctx.putImageData(d, 0, 0);
+    $('selTag').hidden = false;
+  }
+  function clearSel() { if (S.sel) S.rcId = null; S.sel = null; S.move = null; resetMoveView(); drawSel(); selInfo(''); renderPanelState(); }
+  function selInfo(t) { const el = document.querySelector('#ctx .selinfo'); if (el) el.textContent = t; renderPanelState(); }
+  $('selClear').onclick = clearSel;
+
+  // ---------------------------------------------------------------- processing signature (driven by real requests)
+  const work = $('work'), list = $('checkList'), sub = $('checkSub'), time = $('checkTime'), title = $('checkTitle'), statusEl = $('statusText');
+  let timers = [], clock = null, started = 0;
+  const later = (ms, fn) => timers.push(setTimeout(fn, ms));
+  const say = text => { statusEl.classList.add('swap'); setTimeout(() => { statusEl.textContent = text; statusEl.classList.remove('swap'); }, 220); };
+  const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+  const STAGES = {
+    edit: ['Reading your photo', 'Making your edit'],
+    remove: ['Reading your selection', 'Removing it and its shadow'],
+    recolour: ['Finding the object', 'Changing the colour'],
+    expand: ['Reading the scene', 'Painting the new edges'],
+    ideas: ['Looking at your photo', 'Thinking of ideas'],
+    generate: ['Reading your description', 'Creating the image'],
+    shade: ['Changing the shade'],
+    refocus: ['Re-rendering the lens blur'],
+    trends: ['Searching what is popular right now', 'Turning trends into edits'],
+    upscale: ['Reading the fine detail', 'Adding real detail at the new size'],
+    add: ['Making room for it', 'Adding it with a soft shadow'],
+    cutout: ['Finding the main subject', 'Tracing soft edges'],
+    view3d: ['Cutting out the object', 'Completing hidden parts', 'Building the 3D model (1–3 minutes)'],
+    style: ['Reading the style', 'Repainting your photo'],
+    pose: ['Reading the pose in the reference', 'Posing your person', 'Correcting the joints'],
+    bokeh: ['Measuring depth', 'Finding the subject', 'Blurring like a real lens'],
+    move: ['Lifting the object', 'Filling where it was', 'Putting it down'],
+    relight: ['Planning the new light', 'Relighting, keeping every detail'],
+    product: ['Recognising the product', 'Building the scene around it'],
+    dolly: ['Separating subject and background', 'Filling behind the subject', 'Measuring depth'],
+  };
+  function resetCard() {
+    timers.forEach(clearTimeout); clearInterval(clock); work.classList.remove('processing', 'settled');
+    title.textContent = 'Ready when you are'; time.textContent = ''; sub.textContent = 'Pick a tool, or describe your edit below.';
+    list.innerHTML = ''; list.classList.add('idle'); $('routeRow').hidden = true; idleStatus();
+  }
+  function run(kind, label) {
+    timers.forEach(clearTimeout); timers = []; clearInterval(clock);
+    list.classList.remove('idle');
+    sub.textContent = '“' + label + '”';
+    title.textContent = kind === 'view3d' ? 'Building in 3D' : kind === 'ideas' ? 'Finding ideas' : kind === 'trends' ? 'Finding trends' : kind === 'generate' ? 'Creating your image' : kind === 'dolly' ? 'Making your video' : 'Making your edit';
+    work.classList.remove('settled'); work.classList.add('processing'); $('routeRow').hidden = true;
+    const st = STAGES[kind] || STAGES.edit;
+    list.innerHTML = '';
+    const items = st.map(s => { const li = document.createElement('li'); li.className = 'pending'; li.innerHTML = '<span class="st"></span><span class="t"></span>'; li.querySelector('.t').textContent = s; list.appendChild(li); return li; });
+    statusEl.textContent = online === 'waking' || online === 'connecting' ? 'Waking the AI first (1–3 minutes)' : st[0];
+    started = Date.now();
+    clock = setInterval(() => { time.textContent = fmt((Date.now() - started) / 1000); }, 250);
+    later(120, () => items[0].className = 'work');
+    st.slice(1).forEach((s, i) => later(1300 + i * 2600, () => { items[i].className = 'done'; items[i + 1].className = 'work'; if (online === 'ready') say(s); }));
+    later(25000, () => say(S.model === 'pro' && kind !== 'view3d' ? 'Still working: Lumen 1.3 – Lux takes about half a minute' : 'Still working, nearly there'));
+    later(70000, () => say(kind === 'view3d' ? 'Still building: 3D takes a few minutes the first time' : 'Taking longer than usual (the AI may be starting up)'));
+  }
+  function showStats(r, kind) {
+    const sec = r.seconds != null ? r.seconds : (Date.now() - started) / 1000;
+    $('rsTime').textContent = sec < 60 ? sec.toFixed(1) + ' s' : fmt(sec);
+    const g = r.peak_gb;
+    $('rsVram').textContent = g != null ? g.toFixed(1) + ' GB' : '–';
+    $('rsBar').style.width = g != null ? Math.min(100, g / 16 * 100) + '%' : '0';
+    const tier = TIER_ROUTES.includes(r.route) ? (r.model || (S.last && S.last.model) || S.model) : null;
+    $('rsModel').textContent = tier ? TIERS[tier][0] : '';
+    $('rsNote').textContent = (ROUTE_NAMES[r.route] || r.route || kind || '') + (g == null ? ' · GPU memory is reported by the live server' : g <= 16 ? ' · within the 16 GB budget' : '');
+  }
+  function finish(r, kind) {
+    showStats(r, kind);
+    timers.forEach(clearTimeout); timers = []; clearInterval(clock);
+    work.classList.remove('processing'); void work.offsetWidth; work.classList.add('settled');
+    // no after-the-fact checks any more (removed: they cost seconds per edit) - just the result and the time
+    title.textContent = kind === 'ideas' ? 'Ideas ready' : kind === 'trends' ? 'Trends ready' : kind === 'generate' ? 'Image created' : kind === 'dolly' ? 'Video ready' : 'Edit complete';
+    time.textContent = fmt(r.seconds != null ? r.seconds : (Date.now() - started) / 1000);
+    say(r.note || 'Done');
+    list.innerHTML = '';
+    const rn = ROUTE_NAMES[r.route] || r.route || '';
+    const tier = TIER_ROUTES.includes(r.route) ? (r.model || (S.last && S.last.model) || S.model) : null;
+    $('routeText').textContent = rn ? 'Used: ' + rn + (tier ? ' · ' + TIERS[tier][0] : '') : '';
+    const again = !!(S.last && S.last.variable);
+    $('anotherLink').hidden = !again; $('fullLink').hidden = !(again && S.last.model !== 'pro'); $('retryLink').hidden = true;
+    $('routeRow').hidden = !(rn || again);
+  }
+  function fail(msg, retry) {
+    timers.forEach(clearTimeout); timers = []; clearInterval(clock);
+    work.classList.remove('processing', 'settled');
+    title.textContent = 'That did not work'; say(msg);
+    list.innerHTML = '';
+    $('routeText').textContent = ''; $('anotherLink').hidden = true; $('fullLink').hidden = true;
+    $('retryLink').hidden = !retry; $('routeRow').hidden = !retry; fail.retry = retry;
+  }
+  $('retryLink').onclick = e => { e.preventDefault(); fail.retry && fail.retry(); };
+
+  // ---------------------------------------------------------------- actions
+  function setBusy(b) {
+    busy = b; $('sendBtn').disabled = b; document.querySelectorAll('#ctx .btn, .vars .more').forEach(x => x.disabled = b || x.dataset.off === '1');
+    canvas.classList.toggle('wait', b);
+  }
+  // kind: animation; path: endpoint; payload: request without image/quality/seed; label: history text
+  // opts.base: history index whose image is sent (variations reuse the same base); opts.replace: overwrite current step
+  async function act(kind, path, payload, label, opts = {}) {
+    if (busy || !cur()) return null;
+    const base = opts.base != null ? opts.base : S.cur;
+    const seed = opts.seed != null ? opts.seed : SEED, model = opts.model || S.model;
+    const body = { ...payload, image: S.hist[base].img, model, quality: qualityOf(model), seed };
+    setBusy(true); run(kind, label);
+    try {
+      const r = await call(path, body);
+      if (opts.variable !== false) S.last = { kind, path, payload, label, base, seed, model, variable: opts.variable !== false };
+      else S.last = null;
+      if (r.image) { if (opts.replace) await replaceCurrent(r, seed); else { await push(r, label); } }
+      finish(r, kind);
+      return r;
+    } catch (e) {
+      const refused = /can't make this edit|so it was not run/.test(e.message);    // the request guard said no: retrying won't help
+      fail(e.message, refused ? null : () => act(kind, path, payload, label, opts));
+      if (refused) title.textContent = 'Not allowed';
+      return null;
+    } finally { setBusy(false); renderPanelState(); }
+  }
+  // "Another version" = same request, new seed, replaces the current step; "Full quality" = same seed, full steps
+  $('anotherLink').onclick = e => { e.preventDefault(); another(); };
+  $('fullLink').onclick = e => { e.preventDefault(); const L = S.last; if (!L) return; act(L.kind, L.path, L.payload, L.label, { base: L.base, seed: L.seed, model: 'pro', replace: true }); };
+  function another() {
+    const L = S.last; if (!L || busy) return;
+    const seed = Math.max(L.seed, ...S.vars.map(v => v.seed)) + 1;
+    act(L.kind, L.path, L.payload, L.label, { base: L.base, seed, model: L.model, replace: S.cur === L.base + 1 });
+  }
+  function renderVars() {
+    const v = $('vars'); v.innerHTML = '';
+    if (!S.vars.length || !S.last) { v.innerHTML = '<p class="muted" style="grid-column:1/-1;margin:0">After an edit, try other versions of it here.</p>'; return; }
+    S.vars.forEach((x, i) => {
+      const b = document.createElement('button'); b.setAttribute('aria-pressed', cur().img === x.img); b.setAttribute('aria-label', 'Version ' + (i + 1));
+      b.innerHTML = '<img alt="">'; b.querySelector('img').src = x.img;
+      b.onclick = () => { if (busy) return; cur().img = x.img; render(); };
+      v.appendChild(b);
+    });
+    if (S.vars.length < 6) { const m = document.createElement('button'); m.className = 'more'; m.textContent = '+ Another'; m.disabled = busy; m.onclick = another; v.appendChild(m); }
+  }
+
+  function doEdit(text, title) {
+    text = text.trim(); if (!text) return;
+    if (/^(please\s+)?(remove|erase|delete|cut out)\s+(the\s+)?background\.?$/i.test(text)) return doCutout();
+    const ratio = text.match(/\b(expand|extend|widen|outpaint|make it)\b.*?\b(\d{1,2})\s*[:x×]\s*(\d{1,2})\b/i);
+    if (ratio) return doExpand(`${ratio[2]}:${ratio[3]}`);
+    const payload = { prompt: text };
+    if (S.sel) payload.mask = S.sel.mask;
+    if (S.ref) payload.reference = S.ref;
+    const label = title ? 'Trend: ' + title : text.length > 60 ? text.slice(0, 57) + '…' : text;
+    act(/^\s*(remove|erase|delete|get rid of|take out)\b/i.test(text) ? 'remove' : 'edit', 'edit', payload, label);
+  }
+  function doCutout() { act('cutout', 'cutout', {}, 'Background removed', { variable: false }); }
+  function doExpand(ratio, grow) { act('expand', 'expand', ratio ? { ratio } : { grow: grow || .25 }, ratio ? `Expanded to ${ratio}` : 'Expanded all round'); }
+
+  $('promptForm').onsubmit = e => { e.preventDefault(); const v = $('promptInput').value.trim(); if (!v) return; cur() ? doEdit(v) : doGenerate(v); };
+  document.querySelectorAll('.prompt-zone .chip').forEach(c => c.onclick = () => {
+    if (c.dataset.act === 'cutout') return doCutout();
+    if (c.dataset.act === 'expand') return doExpand(c.dataset.ratio);
+    if (c.dataset.act === 'trends') { document.querySelector('.tool[data-tool="trends"]').click(); if (!trend.items.length) ACTIONS.trends(); return; }
+    $('promptInput').value = c.textContent.trim(); doEdit(c.textContent);
+  });
+  // ---------------------------------------------------------------- model picker (Lumen 1.1 Lumina / 1.2 Kroma / 1.3 Lux)
+  const menu = $('modelMenu');
+  function setModel(m) {
+    S.model = m; store.set('lumen.model', m);
+    $('modelName').textContent = TIERS[m][0]; $('modelSpeed').textContent = TIERS[m][1];
+    menu.querySelectorAll('li').forEach(li => li.setAttribute('aria-selected', li.dataset.m === m));
+  }
+  const openMenu = on => { menu.hidden = !on; $('modelBtn').setAttribute('aria-expanded', on); if (on) (menu.querySelector('[aria-selected="true"]') || menu.firstElementChild).focus(); };
+  $('modelBtn').onclick = e => { e.stopPropagation(); openMenu(menu.hidden); };
+  menu.querySelectorAll('li').forEach(li => { li.onclick = () => { setModel(li.dataset.m); openMenu(false); $('modelBtn').focus(); };
+    li.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); li.click(); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); (li.nextElementSibling || li).focus(); } if (e.key === 'ArrowUp') { e.preventDefault(); (li.previousElementSibling || li).focus(); }
+      if (e.key === 'Escape') { openMenu(false); $('modelBtn').focus(); } }; });
+  document.addEventListener('click', e => { if (!menu.hidden && !e.target.closest('#modelPick')) openMenu(false); });
+  setModel(S.model);
+
+  // reference photo (pose, style, "like this one")
+  $('refBtn').onclick = () => $('refIn').click();
+  $('refIn').onchange = () => { const f = $('refIn').files[0]; if (!f) return; const r = new FileReader();
+    r.onload = async () => { const n = await normalise(r.result); S.ref = n.src; $('refThumb').src = n.src; $('refTag').hidden = false; toast('Reference added. Ask for its pose (“pose like this”) or its style (“in this style”), or use the Pose / Style tools.'); renderPanel(); };
+    r.readAsDataURL(f); $('refIn').value = ''; };
+  $('refClear').onclick = () => { S.ref = null; $('refTag').hidden = true; renderPanel(); };
+
+  // open / drop a photo
+  const readFile = f => { if (!f || !f.type.startsWith('image/')) return toast('That is not an image.'); const r = new FileReader(); r.onload = () => openPhoto(r.result, f.name); r.readAsDataURL(f); };
+  $('openBtn').onclick = $('emptyOpen').onclick = () => $('fileIn').click();
+  $('fileIn').onchange = () => { readFile($('fileIn').files[0]); $('fileIn').value = ''; };
+  const stage = $('stage');
+  stage.addEventListener('dragover', e => { e.preventDefault(); stage.classList.add('drag-over'); });
+  stage.addEventListener('dragleave', () => stage.classList.remove('drag-over'));
+  stage.addEventListener('drop', e => { e.preventDefault(); stage.classList.remove('drag-over'); readFile(e.dataTransfer.files[0]); });
+
+  // export the current version
+  $('exportBtn').onclick = async e => {
+    e.preventDefault(); const c = cur(); if (!c) return;
+    // the invisible LumenAI mark is added only here (marking every preview made edits and the colour slider slow)
+    let src = c.img; const btn = $('exportBtn'); btn.style.opacity = .6;
+    if (S.cur > 0) {
+      try { src = (await call('export', { image: c.img }, 60 * 1000)).image; }
+      catch (err) { toast('Saved without the LumenAI watermark (the server did not answer).'); }
+    }
+    btn.style.opacity = '';
+    const blob = await (await fetch(src)).blob();
+    const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = (S.name.replace(/\.[a-z0-9]+$/i, '') || 'photo') + '-lumen.' + ext; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  };
+
+  // ---------------------------------------------------------------- tool panels
+  const ctx = $('ctx');
+  const SWATCHES = [['Amber', '#a8741f'], ['Olive', '#555934'], ['Wine', '#7b2f35'], ['Navy', '#2f4f7b'], ['Teal', '#2f6f63'], ['Blush', '#d9a3a0'], ['Black', '#1d1d1b'], ['White', '#f4f1ea']];
+  const trend = { items: [], sources: [], topic: '', forPhoto: false, date: '', cached: false };
+  let upScale = 2;
+  let rc = { colour: '#2f4f7b', hue: 215 }, ideas = [], idea = -1, expandRatio = '16:9', seenIdeas = [], addBox = null, addOwn = '';
+  const SCENES = { studio: 'Studio podium', marble: 'Marble counter', cafe: 'Café table', nature: 'Forest stream', luxury: 'Black velvet', beach: 'Beach' };
+  const STYLE_NAMES = { watercolour: 'Watercolour', oil: 'Oil painting', anime: 'Anime', pencil: 'Pencil sketch', popart: 'Pop art', clay: 'Clay 3D', film: '70s film' };
+  const LIGHT_NAMES = { left: 'From the left', right: 'From the right', top: 'Studio top light', golden: 'Golden hour', blue: 'Blue hour', neon: 'Neon night', dim: 'Dim lamp' };
+  const prod = { scene: 'studio', words: '' }, sty = { preset: 'watercolour', strength: 85 }, lit = { light: 'left', words: '' };
+  let genDraft = '';
+  const refBox = msg => S.ref ? `<div class="refbox"><img src="${S.ref}" alt="Reference photo"><span>Reference photo</span><button class="btn sm line" data-a="addref">Change</button></div>`
+    : `<div class="refbox"><span>${msg}</span><button class="btn sm line" data-a="addref">Add photo</button></div>`;
+  const panelHead = (t, extra = '') => `<h2>${t} <span class="muted">${extra}</span><button class="ghost x" type="button" aria-label="Close panel">×</button></h2>`;
+  const PANELS = {
+    select: () => `${panelHead('Select')}<p class="muted">Click an object, or drag a box around it (only what is inside the box is selected). Shift-click adds more, Alt-click (or right-click) takes a part away. Your next edit then stays inside the selection.</p>
+      <div class="selinfo"></div><div class="panel-actions"><button class="btn sm line" data-a="clear">Clear selection</button></div>`,
+    remove: () => `${panelHead('Remove')}<p class="muted">Click the thing to remove, then press Remove. Its shadow goes too. You can also just type “remove the …”.</p>
+      <div class="selinfo"></div><div class="panel-actions"><button class="btn sm" data-a="remove" data-need="sel">Remove</button><button class="btn sm line" data-a="clear">Clear</button></div>`,
+    expand: () => `${panelHead('Expand')}<p class="muted">Grow the frame. New edges are painted to match your photo; the original stays as it is.</p>
+      <div class="row">${['16:9', '4:3', '3:2', '1:1', '4:5', '9:16'].map(r => `<button class="chip" data-r="${r}" aria-pressed="${r === expandRatio}">${r}</button>`).join('')}<button class="chip" data-r="grow" aria-pressed="${expandRatio === 'grow'}">+25% all round</button></div>
+      <div class="panel-actions"><button class="btn sm" data-a="expand">Expand</button></div>`,
+    recolour: () => `${panelHead('Recolour')}<p class="muted">Click the object, pick a colour, then drag the shade. Only the object changes, its shading stays.</p>
+      <div class="swatches" role="group" aria-label="Colours">${SWATCHES.map(([n, c]) => `<button class="sw" style="background:${c}" aria-label="${n}" data-c="${c}" aria-pressed="${c === rc.colour}"></button>`).join('')}</div>
+      <label class="muted" for="hue">Shade</label><input type="range" id="hue" min="0" max="359" value="${rc.hue}"><div class="hue-track" aria-hidden="true"></div>
+      <input class="field" id="rcWhat" placeholder="…or name it, like “the backpack”">
+      <div class="selinfo"></div><div class="panel-actions"><button class="btn sm" data-a="recolour">Recolour</button><button class="btn sm line" data-a="clear">Clear</button></div>`,
+    '3d': () => `${panelHead('View in 3D')}<p class="muted">Turns the selected object (or the main subject, if nothing is selected) into a 3D model you can spin and download. Takes 1–3 minutes.</p>
+      <label class="tick"><input type="checkbox" id="complete3d" checked> Complete parts that are hidden or cut off</label>
+      <div class="selinfo"></div><div class="panel-actions"><button class="btn sm" data-a="view3d">Make 3D model</button><button class="btn sm line" data-a="last3d" data-off="${lastGlb ? 0 : 1}" ${lastGlb ? '' : 'disabled'}>Open last model</button></div>`,
+    ideas: () => `${panelHead('Ideas')}<p class="muted">Things that would suit this photo. Pick one: the AI finds a spot and a realistic size. Drag the box to move it, drag its corner to resize, then add it.</p>
+      <div class="ideas-list">${ideas.map((d, i) => `<button class="idea" data-i="${i}" aria-pressed="${i === idea}">${esc(d.object)}<small>${esc(d.reason)}${d.where ? ' · ' + esc(d.where) : ''}</small></button>`).join('')}</div>
+      <input class="field" id="addWhat" placeholder="…or add something else, like “a coffee cup”">
+      <div class="selinfo"></div>
+      <div class="panel-actions"><button class="btn sm ${ideas.length ? 'line' : ''}" data-a="ideas">${ideas.length ? 'New ideas' : 'Get ideas'}</button><button class="btn sm line" data-a="placeOwn">Find a spot</button><button class="btn sm" data-a="add" data-need="box">Add it</button></div>`,
+    cutout: () => `${panelHead('Cut out')}<p class="muted">Removes the background around the main subject, with soft edges for hair and fur. Export gives a transparent PNG.</p>
+      <div class="panel-actions"><button class="btn sm" data-a="cutout">Cut out the subject</button></div>`,
+    trends: () => `${panelHead('Trending today')}<p class="muted">Looks that are popular right now, found with Google Search. Try one on your photo with a click.</p>
+      <input class="field" id="trTopic" placeholder="Any topic? e.g. product photos, weddings">
+      <label class="tick"><input type="checkbox" id="trPhoto" ${trend.forPhoto ? 'checked' : ''}> Pick trends that suit this photo</label>
+      <div class="panel-actions"><button class="btn sm ${trend.items.length ? 'line' : ''}" data-a="trends">${trend.items.length ? 'Refresh' : 'Find trends'}</button></div>
+      <div class="ideas-list">${trend.items.map((t, i) => `<div class="idea trend"><b>${esc(t.title)}</b><small>${esc(t.why)}</small>
+        <button class="btn sm" data-t="${i}">Try it</button></div>`).join('')}</div>
+      ${trend.sources.length ? `<p class="muted src">Sources: ${trend.sources.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`).join(', ')}</p>` : ''}
+      ${trend.date ? `<p class="muted src">Searched ${esc(trend.date)}${trend.cached ? ' (saved result)' : ''}</p>` : ''}`,
+    upscale: () => `${panelHead('Upscale')}<p class="muted">Makes the photo larger with real new detail (AI), not just bigger pixels. Up to 4096 px.</p>
+      <div class="row">${[2, 4].map(k => `<button class="chip" data-up="${k}" aria-pressed="${k === upScale}">${k}× larger</button>`).join('')}</div>
+      <div class="selinfo">${cur() ? `Now ${cur().w}×${cur().h} → ${Math.min(4096, cur().w * upScale)}×${Math.round(Math.min(4096, cur().w * upScale) * cur().h / cur().w)}` : ''}</div>
+      <div class="panel-actions"><button class="btn sm" data-a="upscale">Upscale</button></div>`,
+    brush: () => `${panelHead('Brush')}<p class="muted">Paint over the area you want to change. Hold Alt (Option) to erase. Then type your edit below: it stays inside what you painted. Remove and Recolour use it too.</p>
+      <div class="range-row"><span>Size</span><input type="range" id="brushSize" min="8" max="160" value="${brushSize}"><output id="brushOut">${brushSize}px</output></div>
+      <div class="selinfo"></div><div class="panel-actions"><button class="btn sm line" data-a="clear">Clear</button></div>`,
+    move: () => `${panelHead('Move')}<p class="muted">Click the object (or drag a box around it), then drag it to its new place. The spot it leaves is filled in to match the scene.</p>
+      <div class="range-row"><span>Size</span><input type="range" id="moveScale" min="40" max="200" value="${Math.round((S.move ? S.move.scale : 1) * 100)}" ${S.sel ? '' : 'disabled'}><output id="moveOut">${Math.round((S.move ? S.move.scale : 1) * 100)}%</output></div>
+      <div class="selinfo"></div><div class="panel-actions"><button class="btn sm" data-a="move" data-need="moved">Move it</button><button class="btn sm line" data-a="moveReset" data-need="sel">Reset</button></div>`,
+    create: () => `${panelHead('New image')}<p class="muted">Describe an image and it is created with the model chosen in the prompt bar. It becomes a new step, so undo brings your photo back.</p>
+      <textarea class="field" id="genText" rows="3" placeholder="a cozy reading nook at dusk, warm lamp light">${esc(genDraft)}</textarea>
+      <div class="row">${Object.keys(GEN_RATIOS).map(r => `<button class="chip" data-gr="${r}" aria-pressed="${r === genRatio}">${r}</button>`).join('')}</div>
+      <div class="panel-actions"><button class="btn sm" data-a="create">Create</button></div>`,
+    product: () => `${panelHead('Product shot')}<p class="muted">Puts your product in a new scene and keeps it exact: shape, colours and logo. Works best on a clear product photo or a cut-out.</p>
+      <div class="row">${Object.entries(SCENES).map(([k, n]) => `<button class="chip" data-sc="${k}" aria-pressed="${k === prod.scene && !prod.words}">${n}</button>`).join('')}</div>
+      <input class="field" id="prodWords" placeholder="…or describe a scene, like “on a snowy windowsill”" value="${esc(prod.words)}">
+      <div class="panel-actions"><button class="btn sm" data-a="product">Make product shot</button></div>`,
+    style: () => `${panelHead('Style')}<p class="muted">Repaint the photo in a new style. Everything stays where it is; only the look changes.</p>
+      <div class="row">${Object.entries(STYLE_NAMES).map(([k, n]) => `<button class="chip" data-st="${k}" aria-pressed="${k === sty.preset}">${n}</button>`).join('')}
+        <button class="chip" data-st="ref" aria-pressed="${sty.preset === 'ref'}" ${S.ref ? '' : 'disabled'}>My reference photo</button></div>
+      ${refBox('Add a painting or photo whose style you like')}
+      <div class="range-row"><span>Strength</span><input type="range" id="styStrength" min="40" max="100" value="${sty.strength}"><output id="styOut">${sty.strength}%</output></div>
+      <div class="panel-actions"><button class="btn sm" data-a="style">Apply style</button></div>`,
+    pose: () => `${panelHead('Pose')}<p class="muted">Add a photo of anyone in the pose you want. The person in your photo takes that pose; their face, clothes and the background stay the same.</p>
+      ${refBox('Add a photo with the pose you want')}
+      <div class="panel-actions"><button class="btn sm" data-a="pose" data-need="ref">Copy the pose</button></div>
+      <p class="tip">Works best when the whole body is visible in both photos. Takes about a minute (it checks and corrects the joints).</p>`,
+    collage: () => `${panelHead('Collage')}<p class="muted">Combine up to six photos into one image.</p>
+      <label class="tick"><input type="checkbox" id="colCur" ${col.useCur ? 'checked' : ''} ${cur() ? '' : 'disabled'}> Include the current photo</label>
+      <div class="thumbs">${colSrcs().map((src, i) => `<div class="th"><img src="${src}" alt="">${col.useCur && cur() && i === 0 ? '' : `<button data-rm="${i - (col.useCur && cur() ? 1 : 0)}" aria-label="Remove">×</button>`}</div>`).join('')}</div>
+      <div class="panel-actions"><button class="btn sm line" data-a="colAdd">Add photos</button></div>
+      <div class="row">${Object.entries(LAYOUTS).map(([k, n]) => `<button class="chip" data-cl="${k}" aria-pressed="${k === col.layout}">${n}</button>`).join('')}</div>
+      <div class="range-row"><span>Spacing</span><input type="range" id="colGap" min="0" max="48" value="${col.gap}"><output id="colOut">${col.gap}</output></div>
+      <div class="swatches">${BGS.map(([n, c]) => `<button class="sw" style="background:${c}" aria-label="${n} background" data-cb="${c}" aria-pressed="${c === col.bg}"></button>`).join('')}</div>
+      <div class="panel-actions"><button class="btn sm" data-a="collage" data-need="collage">Make collage</button></div>`,
+    relight: () => `${panelHead('Relight')}<p class="muted">Change where the light comes from and its mood. Faces, text and textures keep every detail.</p>
+      <div class="row">${Object.entries(LIGHT_NAMES).map(([k, n]) => `<button class="chip" data-lt="${k}" aria-pressed="${k === lit.light && !lit.words}">${n}</button>`).join('')}</div>
+      <input class="field" id="litWords" placeholder="…or describe it, like “soft window light from the right”" value="${esc(lit.words)}">
+      <div class="panel-actions"><button class="btn sm" data-a="relight">Relight</button></div>`,
+    bokeh: () => `${panelHead('Bokeh')}<p class="muted">Blurs the background like a wide-open portrait lens, using real depth. The subject is found for you, or click one first.</p>
+      <div class="range-row"><span>Blur</span><input type="range" id="bkStrength" min="0" max="100" value="${bk.strength}"><output id="bkOut">${bk.strength}%</output></div>
+      <div class="selinfo"></div>
+      <div class="panel-actions"><button class="btn sm" data-a="bokeh">${cur() && cur().bokehId ? 'Apply again' : 'Apply bokeh'}</button></div>
+      <p class="tip">${cur() && cur().bokehId ? 'Click anywhere on the photo to focus there. Moving the slider updates the blur in about a second.' : 'After applying you can click to refocus and change the blur instantly.'}</p>`,
+    dolly: () => `${panelHead('Dolly video')}<p class="muted">Turns the photo into a short 3D camera move: the subject is lifted off, the background behind it is filled in, and depth gives the parallax.</p>
+      <div class="row">${Object.entries(MOVES).map(([k, n]) => `<button class="chip" data-dm="${k}" aria-pressed="${k === dollyMove}">${n}</button>`).join('')}</div>
+      <div class="selinfo"></div>
+      <div class="panel-actions"><button class="btn sm" data-a="dolly">Make video</button><button class="btn sm line" data-a="lastDolly" data-off="${lastLayers ? 0 : 1}" ${lastLayers ? '' : 'disabled'}>Open last</button></div>
+      <p class="tip">Click the subject first if the wrong thing is picked.</p>`,
+    history: () => `${panelHead('History')}<p class="muted">Every step is kept. Click a step in the list to go back to it; your next edit continues from there. Ctrl+Z and Ctrl+Shift+Z also work.</p>
+      <div class="panel-actions"><button class="btn sm line" data-a="revert">Revert to original</button></div>`,
+  };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  function renderPanel() {
+    ctx.innerHTML = PANELS[S.tool]();
+    ctx.querySelectorAll('[data-a]').forEach(b => b.onclick = () => ACTIONS[b.dataset.a]());
+    ctx.querySelector('.x').onclick = () => $('app').classList.remove('panel-open');
+    ctx.querySelectorAll('[data-up]').forEach(b => b.onclick = () => { upScale = +b.dataset.up; renderPanel(); });
+    ctx.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { expandRatio = b.dataset.r; ctx.querySelectorAll('[data-r]').forEach(o => o.setAttribute('aria-pressed', o === b)); });
+    ctx.querySelectorAll('.sw').forEach(b => b.onclick = () => { rc.colour = b.dataset.c; rc.hue = hexHue(rc.colour); renderPanel(); if (busy) return; if (S.rcId) shade(); else if (S.sel) ACTIONS.recolour(); });
+    const hue = $('hue');
+    if (hue) { hue.oninput = () => { rc.hue = +hue.value; rc.colour = hueHex(rc.hue, rc.colour); ctx.querySelectorAll('.sw').forEach(o => o.setAttribute('aria-pressed', 'false')); };
+               hue.onchange = () => { if (busy) return; if (S.rcId) shade(); else if (S.sel) ACTIONS.recolour(); }; }
+    ctx.querySelectorAll('.idea[data-i]').forEach(b => b.onclick = () => { idea = +b.dataset.i; ctx.querySelectorAll('.idea').forEach(o => o.setAttribute('aria-pressed', o === b)); place(ideas[idea].object, ideas[idea].where); });
+    const tt = $('trTopic'); if (tt) { tt.value = trend.topic; tt.oninput = () => trend.topic = tt.value; tt.onkeydown = e => { if (e.key === 'Enter') ACTIONS.trends(); };
+      $('trPhoto').onchange = () => trend.forPhoto = $('trPhoto').checked; }
+    ctx.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { const t = trend.items[+b.dataset.t]; $('promptInput').value = t.prompt; doEdit(t.prompt, t.title); });
+    const aw = $('addWhat'); if (aw) { aw.value = addOwn; aw.oninput = () => addOwn = aw.value; aw.onkeydown = e => { if (e.key === 'Enter') ACTIONS.placeOwn(); }; }
+    const on = (sel, fn) => ctx.querySelectorAll(sel).forEach(b => b.onclick = () => fn(b));
+    const slide = (id, out, fmtv, set, done) => { const el = $(id); if (!el) return; el.oninput = () => { set(+el.value); $(out).textContent = fmtv(+el.value); }; if (done) el.onchange = done; };
+    slide('brushSize', 'brushOut', v => v + 'px', v => brushSize = v);
+    slide('moveScale', 'moveOut', v => v + '%', v => { if (!S.sel) return; if (!S.move) S.move = { dx: 0, dy: 0, scale: 1 }; S.move.scale = v / 100; if (movePrev.hidden) moveSetup(); else moveXf(); renderPanelState(); });
+    slide('styStrength', 'styOut', v => v + '%', v => sty.strength = v);
+    slide('colGap', 'colOut', v => v, v => col.gap = v);
+    slide('bkStrength', 'bkOut', v => v + '%', v => bk.strength = v, () => { if (cur() && cur().bokehId) bokehAdjust(); });
+    on('[data-gr]', b => { genRatio = b.dataset.gr; ctx.querySelectorAll('[data-gr]').forEach(o => o.setAttribute('aria-pressed', o === b)); });
+    on('[data-sc]', b => { prod.scene = b.dataset.sc; prod.words = ''; renderPanel(); });
+    on('[data-st]', b => { sty.preset = b.dataset.st; renderPanel(); });
+    on('[data-lt]', b => { lit.light = b.dataset.lt; lit.words = ''; renderPanel(); });
+    on('[data-cl]', b => { col.layout = b.dataset.cl; renderPanel(); });
+    on('[data-cb]', b => { col.bg = b.dataset.cb; renderPanel(); });
+    on('[data-rm]', b => { col.photos.splice(+b.dataset.rm, 1); renderPanel(); });
+    on('[data-dm]', b => { dollyMove = b.dataset.dm; renderPanel(); });
+    const bind = (id, set) => { const el = $(id); if (el) el.oninput = () => set(el.value); };
+    bind('genText', v => genDraft = v); bind('prodWords', v => prod.words = v); bind('litWords', v => lit.words = v);
+    if ($('colCur')) $('colCur').onchange = () => { col.useCur = $('colCur').checked; renderPanel(); };
+    if (S.tool === 'ideas' && addBox && ctx.querySelector('.selinfo')) ctx.querySelector('.selinfo').textContent = `Adding: ${addBox.object}. Drag the box to adjust.`;
+    if (S.sel && ctx.querySelector('.selinfo')) ctx.querySelector('.selinfo').textContent = `Selected ${Math.max(1, Math.round(S.sel.area * 100))}% of the photo.`;
+    renderPanelState();
+  }
+  function renderPanelState() {
+    const need = { sel: () => !S.sel, box: () => !addBox, ref: () => !S.ref, collage: () => colSrcs().length < 2,
+      moved: () => !S.sel || !S.move || (Math.abs(S.move.dx) < 2 && Math.abs(S.move.dy) < 2 && Math.abs(S.move.scale - 1) < .02) };
+    ctx.querySelectorAll('[data-need]').forEach(b => { const off = need[b.dataset.need](); b.dataset.off = off ? 1 : 0; b.disabled = busy || off; });
+    ctx.querySelectorAll('[data-a]:not([data-need]):not([data-off="1"])').forEach(b => b.disabled = busy);
+    $('selTag').hidden = !S.sel;
+  }
+  function showBox(b) {
+    const m = $('marquee'), c = cur(); if (!b || !c) { m.hidden = true; m.classList.remove('edit'); return; }
+    m.classList.toggle('edit', S.tool === 'ideas');
+    Object.assign(m.style, { left: b[0] / c.w * 100 + '%', top: b[1] / c.h * 100 + '%', width: (b[2] - b[0]) / c.w * 100 + '%', height: (b[3] - b[1]) / c.h * 100 + '%' });
+    m.hidden = false;
+  }
+  // colour helpers: the shade slider turns the chosen colour around the hue wheel, keeping its saturation / lightness
+  function hexToHsl(h) { const n = parseInt(h.slice(1), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn; let hh = 0, s = 0;
+    if (d) { s = d / (1 - Math.abs(2 * l - 1)); hh = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; hh *= 60; if (hh < 0) hh += 360; }
+    return [hh, s, l]; }
+  const hexHue = h => Math.round(hexToHsl(h)[0]);
+  function hueHex(hue, like) { let [, s, l] = hexToHsl(like); s = Math.max(s, .35); l = Math.min(Math.max(l, .25), .7);
+    const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((hue / 60) % 2 - 1)), m = l - c / 2;
+    const [r, g, b] = hue < 60 ? [c, x, 0] : hue < 120 ? [x, c, 0] : hue < 180 ? [0, c, x] : hue < 240 ? [0, x, c] : hue < 300 ? [x, 0, c] : [c, 0, x];
+    return '#' + [r, g, b].map(v => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join(''); }
+
+  // the slider: re-run only the colour step on the server (cached object mask), replacing the current version
+  async function shade() {
+    if (busy || !S.rcId) return;
+    const colour = rc.colour;
+    const sw = SWATCHES.find(s => s[1] === colour), nm = sw ? sw[0].toLowerCase() : colour;
+    setBusy(true); run('shade', 'Shade: ' + nm);           // same signature + live timer as every other edit
+    try {
+      const r = await call('recolour-shade', { recolour_id: S.rcId, colour });
+      await replaceCurrent(r); cur().label = 'Recoloured ' + nm; render();
+      S.last = null; finish(r, 'shade');
+    } catch (e) { S.rcId = null; fail(e.message); }
+    setBusy(false);
+  }
+
+  // ideas: ask the server for a spot and a realistic size, then let the person nudge the box
+  async function place(object, where) {
+    if (busy || !cur()) return;
+    selInfo(`Finding a spot for ${object}…`); setBusy(true);
+    try {
+      const r = await call('place', { image: cur().img, object, where });
+      addBox = { object, box: r.box }; showBox(r.box);
+      selInfo(`Adding: ${object}. Drag the box to move it, drag its corner to resize.`);
+    } catch (e) { selInfo(e.message); }
+    setBusy(false); renderPanelState();
+  }
+  (() => {   // drag to move, corner handle to resize; the box is kept in image pixels
+    const m = $('marquee'); const h = document.createElement('span'); h.className = 'grip'; m.appendChild(h);
+    let mode = null, sx = 0, sy = 0, b0 = null;
+    m.addEventListener('pointerdown', e => { if (!addBox || S.tool !== 'ideas' || busy) return; e.preventDefault(); e.stopPropagation();
+      mode = e.target === h ? 'size' : 'move'; sx = e.clientX; sy = e.clientY; b0 = addBox.box.slice(); m.setPointerCapture(e.pointerId); });
+    m.addEventListener('pointermove', e => { if (!mode) return; const r = canvas.getBoundingClientRect(), c = cur();
+      const dx = (e.clientX - sx) / r.width * c.w, dy = (e.clientY - sy) / r.height * c.h; let [x0, y0, x1, y1] = b0;
+      if (mode === 'move') { const w = x1 - x0, hh = y1 - y0; x0 = Math.min(Math.max(0, x0 + dx), c.w - w); y0 = Math.min(Math.max(0, y0 + dy), c.h - hh); x1 = x0 + w; y1 = y0 + hh; }
+      else { x1 = Math.min(c.w, Math.max(x0 + 16, x1 + dx)); y1 = Math.min(c.h, Math.max(y0 + 16, y1 + dy)); }
+      addBox.box = [x0, y0, x1, y1].map(Math.round); showBox(addBox.box); });
+    m.addEventListener('pointerup', () => mode = null);
+  })();
+
+  // back to the original photo as a new step (nothing in the history is lost)
+  function revert() {
+    if (busy || S.cur <= 0) return;
+    const o = S.hist[0];
+    S.hist = S.hist.slice(0, S.cur + 1);
+    S.hist.push({ label: 'Back to the original', img: o.img, w: o.w, h: o.h, t: stamp(), rcId: null });
+    S.cur = S.hist.length - 1; S.vars = []; S.last = null; S.rcId = null;
+    if (S.sel) clearSel();
+    render(); resetCard(); toast('Back to the original. Undo brings your edits back.');
+  }
+  $('revertBtn').onclick = revert;
+
+  let lastGlb = null;
+  const ACTIONS = {
+    clear: clearSel,
+    revert: () => revert(),
+    upscale: () => act('upscale', 'upscale-ai', { scale: upScale }, `Upscaled ${upScale}×`, { variable: false }).then(() => renderPanel()),
+    trends: async () => {
+      if (busy) return;
+      const label = trend.topic.trim() ? 'Trends for ' + trend.topic.trim() : trend.forPhoto ? 'Trends for this photo' : 'Trending today';
+      setBusy(true); run('trends', label);
+      try {
+        const body = { topic: trend.topic, for_photo: trend.forPhoto, n: 6 };
+        if (trend.forPhoto && cur()) body.image = cur().img;
+        const r = await call('trends', body);
+        Object.assign(trend, { items: r.trends || [], sources: r.sources || [], date: r.date || '', cached: !!r.cached });
+        S.last = null; finish({ ...r, route: 'trends', checks: [] }, 'trends'); renderPanel();
+      } catch (e) { fail(e.message, ACTIONS.trends); }
+      setBusy(false); renderPanelState();
+    },
+    remove: () => act('remove', 'edit', { prompt: 'remove the selected object', mask: S.sel.mask }, 'Removed the selection')
+      .then(r => { if (r) clearSel(); }),
+    expand: () => expandRatio === 'grow' ? doExpand(null, .25) : doExpand(expandRatio),
+    recolour: () => {
+      const what = ($('rcWhat') && $('rcWhat').value.trim().replace(/^the\s+/i, '')) || '';
+      if (!S.sel && !what) return selInfo('Click the object first, or type its name.');
+      if (S.sel && what) toast('Using your selection (clear it to recolour by name instead).');
+      const name = SWATCHES.find(s => s[1] === rc.colour);
+      act('recolour', 'recolour', { colour: rc.colour, mask: S.sel ? S.sel.mask : undefined, object: what },
+          `${S.sel || !what ? 'Selection' : what[0].toUpperCase() + what.slice(1)} made ${name ? name[0].toLowerCase() : rc.colour}`, { variable: false });
+    },
+    view3d: () => view3d(),
+    last3d: () => lastGlb && showGlb(lastGlb),
+    ideas: async () => {
+      const r = await act('ideas', 'ideas', { n: 5, avoid: seenIdeas }, 'Ideas for this photo', { variable: false });
+      if (r) { ideas = r.ideas || []; seenIdeas.push(...ideas.map(d => d.object)); idea = -1; addBox = null; showBox(null);
+               if (!ideas.length) toast('No new ideas this time. Try again.'); renderPanel(); }
+    },
+    placeOwn: () => { const w = addOwn.trim(); if (!w) return selInfo('Type what to add first.'); idea = -1; ctx.querySelectorAll('.idea').forEach(o => o.setAttribute('aria-pressed', 'false')); place(w, ''); },
+    add: () => { const d = addBox; if (!d) return; act('add', 'add', { object: d.object, box: d.box }, 'Added ' + d.object)
+      .then(r => { if (r) { showBox(null); if (idea >= 0) ideas.splice(idea, 1); idea = -1; addBox = null; renderPanel(); } }); },
+    cutout: doCutout,
+    addref: () => $('refIn').click(),
+    moveReset: () => { S.move = { dx: 0, dy: 0, scale: 1 }; moveXf(); renderPanel(); },
+    move: () => {
+      const m = S.move; if (!S.sel || !m) return;
+      act('move', 'move', { mask: S.sel.mask, dx: m.dx, dy: m.dy, scale: m.scale }, 'Moved the selection', { variable: false }).then(r => {
+        if (!r) return;
+        resetMoveView(); S.move = null;
+        if (r.mask) { S.sel = { mask: r.mask, points: [], box: r.box, boxPrompt: null, area: S.sel.area, at: S.cur }; drawSel().then(() => S.tool === 'move' && moveSetup()); }
+        renderPanel();
+      });
+    },
+    create: () => { const t = ($('genText') ? $('genText').value : genDraft).trim(); if (!t) return toast('Describe the image first.'); doGenerate(t, true); },
+    product: () => { const w = prod.words.trim(); act('product', 'product', { scene: prod.scene, words: w }, 'Product shot: ' + (w || SCENES[prod.scene].toLowerCase())); },
+    style: () => {
+      if (sty.preset === 'ref' && !S.ref) return toast('Add a reference photo first.');
+      const p = sty.preset === 'ref' ? { reference: S.ref, strength: sty.strength / 100 } : { preset: sty.preset, strength: sty.strength / 100 };
+      act('style', 'style', p, 'Style: ' + (sty.preset === 'ref' ? 'from the reference' : STYLE_NAMES[sty.preset].toLowerCase()));
+    },
+    pose: () => S.ref && act('pose', 'pose', { reference: S.ref }, 'Pose from the reference'),
+    colAdd: () => $('multiIn').click(),
+    collage: () => makeCollage(),
+    relight: () => { const w = lit.words.trim(); act('relight', 'relight', { light: lit.light, words: w }, 'Relight: ' + (w || LIGHT_NAMES[lit.light].toLowerCase())); },
+    bokeh: () => act('bokeh', 'bokeh', { strength: bk.strength / 100, mask: S.sel ? S.sel.mask : undefined }, 'Portrait bokeh', { variable: false })
+      .then(r => { if (r) { cur().bokehId = r.bokeh_id; cur().bokehPoint = null; if (S.sel) clearSel(); renderPanel(); } }),
+    dolly: async () => {
+      if (busy || !cur()) return;
+      setBusy(true); run('dolly', S.sel ? 'Dolly video of the selection' : 'Dolly video');
+      try {
+        const r = await call('layers', { image: cur().img, mask: S.sel ? S.sel.mask : undefined, model: S.model, quality: qualityOf(S.model), seed: SEED });
+        S.last = null; finish(r, 'dolly'); lastLayers = r; renderPanel(); openDolly(r);
+      } catch (e) { fail(e.message, ACTIONS.dolly); }
+      setBusy(false); renderPanelState();
+    },
+    lastDolly: () => lastLayers && openDolly(lastLayers),
+  };
+
+  async function view3d() {
+    if (busy || !cur()) return;
+    const label = S.sel ? '3D model of the selection' : '3D model of the main subject';
+    setBusy(true); run('view3d', label);
+    try {
+      const r = await call('view3d', { image: cur().img, mask: S.sel ? S.sel.mask : undefined, complete: $('complete3d') ? $('complete3d').checked : true }, 30 * 60 * 1000);
+      S.last = null; finish(r, 'view3d'); lastGlb = r.glb; renderPanel(); showGlb(r.glb);
+    } catch (e) { fail(e.message, view3d); }
+    setBusy(false); renderPanelState();
+  }
+
+  // ---------------------------------------------------------------- 3D viewer (three.js r128, loaded on first use)
+  const loadScript = src => new Promise((ok, bad) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => bad(new Error('Could not load the 3D viewer (no internet?)')); document.head.appendChild(s); });
+  let three = null;
+  async function showGlb(glbUrl) {
+    const dlg = $('v3d'), view = $('v3dView'), load = $('v3dLoad');
+    dlg.showModal(); load.hidden = false; load.textContent = 'Loading the viewer…';
+    const blob = await (await fetch(glbUrl)).blob();
+    $('glbDl').href = URL.createObjectURL(blob);
+    try {
+      if (!window.THREE) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');
+      if (!THREE.GLTFLoader) await loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js');
+      if (!THREE.OrbitControls) await loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js');
+    } catch (e) { load.textContent = e.message; return; }
+    if (!three) {
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.outputEncoding = THREE.sRGBEncoding; renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+      view.prepend(renderer.domElement);
+      const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(35, 1, 0.01, 100);
+      scene.add(new THREE.AmbientLight(0xffffff, .45)); scene.add(new THREE.HemisphereLight(0xffffff, 0xb9a98f, .8));
+      const back = new THREE.DirectionalLight(0xffffff, .35); back.position.set(-2, -1, -3); scene.add(back);
+      const sun = new THREE.DirectionalLight(0xffffff, .8); sun.position.set(2, 3, 2); scene.add(sun);
+      const controls = new THREE.OrbitControls(cam, renderer.domElement); controls.enableDamping = true; controls.autoRotate = true; controls.autoRotateSpeed = 1.6;
+      three = { renderer, scene, cam, controls, obj: null };
+      const size = () => { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / Math.max(1, h); cam.updateProjectionMatrix(); };
+      new ResizeObserver(size).observe(view); size();
+      (function loop() { requestAnimationFrame(loop); if (dlg.open) { controls.update(); renderer.render(scene, cam); } })();
+    }
+    const buf = await blob.arrayBuffer();
+    new THREE.GLTFLoader().parse(buf, '', g => {
+      if (three.obj) three.scene.remove(three.obj);
+      const o = g.scene, box = new THREE.Box3().setFromObject(o), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3()).length();
+      o.position.sub(c); three.scene.add(o); three.obj = o;
+      three.cam.position.set(0, s * .25, s * 1.25); three.controls.target.set(0, 0, 0); three.controls.update();
+      load.hidden = true;
+    }, () => { load.textContent = 'This model could not be opened.'; });
+  }
+  $('v3dClose').onclick = () => $('v3d').close();
+
+  // ---------------------------------------------------------------- brush: paint the area by hand (Alt erases)
+  const brushCur = $('brushCur'), brushMask = document.createElement('canvas');
+  let brushSize = 40, stroke = null;                     // brushSize = diameter in screen pixels
+  function brushRadius() { const r = canvas.getBoundingClientRect(); return brushSize / 2 * cur().w / r.width; }
+  function showCursor(e) {
+    const r = canvas.getBoundingClientRect();
+    Object.assign(brushCur.style, { left: (e.clientX - r.left) + 'px', top: (e.clientY - r.top) + 'px', width: brushSize + 'px', height: brushSize + 'px' });
+    brushCur.hidden = false;
+  }
+  canvas.addEventListener('pointerleave', () => { brushCur.hidden = true; });
+  function brushStart(e) {
+    const c = cur();
+    if (brushMask.width !== c.w || brushMask.height !== c.h || !S.sel || !S.sel.brushed) {
+      brushMask.width = c.w; brushMask.height = c.h;
+      const bx = brushMask.getContext('2d');
+      if (S.sel && S.sel.on && S.sel.W === c.w && S.sel.H === c.h) {          // continue from the current selection
+        const d = bx.createImageData(c.w, c.h);
+        for (let i = 0; i < c.w * c.h; i++) if (S.sel.on[i]) { d.data[i * 4] = d.data[i * 4 + 1] = d.data[i * 4 + 2] = d.data[i * 4 + 3] = 255; }
+        bx.putImageData(d, 0, 0);
+      }
+    }
+    if (selCanvas.width !== c.w || selCanvas.height !== c.h) { selCanvas.width = c.w; selCanvas.height = c.h; }
+    const p = imgPoint(e);
+    stroke = { erase: e.altKey, last: p };
+    paint(p, p);
+  }
+  function paint(a, b) {
+    const bx = brushMask.getContext('2d');
+    bx.globalCompositeOperation = stroke.erase ? 'destination-out' : 'source-over';
+    bx.strokeStyle = '#fff'; bx.lineWidth = 2 * brushRadius(); bx.lineCap = bx.lineJoin = 'round';
+    bx.beginPath(); bx.moveTo(a[0], a[1]); bx.lineTo(b[0] + .01, b[1]); bx.stroke();
+    const o = selCanvas.getContext('2d');                 // live overlay: the mask tinted olive
+    o.globalCompositeOperation = 'source-over'; o.clearRect(0, 0, selCanvas.width, selCanvas.height);
+    o.drawImage(brushMask, 0, 0); o.globalCompositeOperation = 'source-in'; o.fillStyle = 'rgba(85, 89, 52, .55)'; o.fillRect(0, 0, selCanvas.width, selCanvas.height);
+    o.globalCompositeOperation = 'source-over';
+  }
+  function brushMove(e) {
+    if (!cur()) return; showCursor(e);
+    if (!stroke) return;
+    const p = imgPoint(e); paint(stroke.last, p); stroke.last = p;
+  }
+  function brushEnd() {
+    stroke = null;
+    const c = cur(), d = brushMask.getContext('2d').getImageData(0, 0, c.w, c.h).data;
+    let n = 0, x0 = c.w, y0 = c.h, x1 = 0, y1 = 0;
+    for (let y = 0; y < c.h; y++) for (let x = 0; x < c.w; x++) if (d[(y * c.w + x) * 4 + 3] > 127) { n++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (!n) { clearSel(); return; }
+    const out = document.createElement('canvas'); out.width = c.w; out.height = c.h;
+    const o = out.getContext('2d'); o.fillStyle = '#000'; o.fillRect(0, 0, c.w, c.h); o.drawImage(brushMask, 0, 0);
+    S.sel = { mask: out.toDataURL('image/png'), points: [], box: [x0, y0, x1 + 1, y1 + 1], boxPrompt: null, area: n / (c.w * c.h), at: S.cur, brushed: true };
+    S.rcId = null; S.move = null;
+    drawSel().then(() => selInfo(`Painted ${Math.max(1, Math.round(S.sel.area * 100))}% of the photo. Now type your edit, or use Remove / Recolour.`));
+  }
+
+  // ---------------------------------------------------------------- move: drag the selected object, then press Move it
+  const movePrev = $('movePrev');
+  let mdrag = null;
+  function resetMoveView() { movePrev.hidden = true; movePrev.style.transform = selCanvas.style.transform = ''; }
+  function moveXf() {
+    const c = cur(), m = S.move, b = S.sel.box;
+    const o = `${(b[0] + b[2]) / 2 / c.w * 100}% ${(b[1] + b[3]) / 2 / c.h * 100}%`;
+    const t = `translate(${m.dx / c.w * 100}%, ${m.dy / c.h * 100}%) scale(${m.scale})`;
+    movePrev.style.transformOrigin = selCanvas.style.transformOrigin = o;
+    movePrev.style.transform = selCanvas.style.transform = t;
+  }
+  async function moveSetup() {
+    const c = cur(); if (!S.sel || !c) { resetMoveView(); return; }
+    if (!S.sel.on) await drawSel();
+    const im = await loadImg(c.img), W = S.sel.W, H = S.sel.H;
+    movePrev.width = W; movePrev.height = H;
+    const x = movePrev.getContext('2d'); x.clearRect(0, 0, W, H); x.drawImage(im, 0, 0, W, H);
+    const d = x.getImageData(0, 0, W, H);
+    for (let i = 0; i < W * H; i++) d.data[i * 4 + 3] = S.sel.on[i] ? 255 : 0;
+    x.putImageData(d, 0, 0);
+    S.move = S.move || { dx: 0, dy: 0, scale: 1 };
+    movePrev.hidden = false; moveXf();
+  }
+  function hitSel(e) {
+    if (!S.sel || !S.sel.on) return false;
+    const c = cur(), [x, y] = imgPoint(e), m = S.move || { dx: 0, dy: 0, scale: 1 }, b = S.sel.box;
+    const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+    const ox = Math.round((x - m.dx - cx) / m.scale + cx), oy = Math.round((y - m.dy - cy) / m.scale + cy);
+    const u = Math.round(ox * S.sel.W / c.w), v = Math.round(oy * S.sel.H / c.h);
+    return u >= 0 && v >= 0 && u < S.sel.W && v < S.sel.H && !!S.sel.on[v * S.sel.W + u];
+  }
+  function moveStart(e) {
+    if (!S.move) S.move = { dx: 0, dy: 0, scale: 1 };
+    if (movePrev.hidden) moveSetup();
+    mdrag = { sx: e.clientX, sy: e.clientY, dx0: S.move.dx, dy0: S.move.dy }; canvas.classList.add('dragging');
+  }
+  function moveDrag(e) {
+    const r = canvas.getBoundingClientRect(), c = cur();
+    S.move.dx = Math.round(mdrag.dx0 + (e.clientX - mdrag.sx) / r.width * c.w);
+    S.move.dy = Math.round(mdrag.dy0 + (e.clientY - mdrag.sy) / r.height * c.h);
+    moveXf();
+  }
+
+  // ---------------------------------------------------------------- bokeh: slider and click-to-refocus re-render on the server CPU (cached depth)
+  const bk = { strength: 60 };
+  async function bokehAdjust(point) {
+    const c = cur(); if (!c || !c.bokehId || busy) return;
+    if (point) c.bokehPoint = point;
+    setBusy(true); run('refocus', point ? 'Focus here' : 'Blur ' + bk.strength + '%');
+    try {
+      const r = await call('bokeh-adjust', { bokeh_id: c.bokehId, strength: bk.strength / 100, point: c.bokehPoint || undefined });
+      await replaceCurrent(r); S.last = null; finish(r, 'bokeh');
+    } catch (e) { c.bokehId = null; fail(e.message); }
+    setBusy(false); renderPanelState();
+  }
+
+  // ---------------------------------------------------------------- dolly video (depth layers, rendered here)
+  function prepMedia(titleText, hint) {
+    const view = $('mediaView');
+    view.querySelectorAll('video, canvas').forEach(x => x.remove());
+    if (dolly) { dolly.stop = true; dolly = null; }
+    $('mediaTitle').textContent = titleText; $('mediaOpts').innerHTML = ''; $('mediaHint').textContent = hint || '';
+    $('mediaLoad').hidden = true; $('media').showModal();
+    return view;
+  }
+  $('mediaClose').onclick = () => { $('media').close(); };
+  $('media').addEventListener('close', () => { if (dolly) { dolly.stop = true; dolly = null; } $('mediaView').querySelectorAll('video').forEach(v => v.pause()); });
+  let dolly = null, dollyMove = 'push', lastLayers = null;
+  const MOVES = { push: 'Push in', zoom: 'Dolly zoom', orbit: 'Orbit', rise: 'Rise' };
+  async function openDolly(L) {
+    const view = prepMedia('Dolly video', 'The camera moves through your photo in 3D. Download records one loop.');
+    $('mediaLoad').hidden = false; $('mediaLoad').textContent = 'Loading the viewer…';
+    try { if (!window.THREE) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'); }
+    catch (e) { $('mediaLoad').textContent = e.message; return; }
+    const [W, H] = L.size, asp = W / H;
+    const [plate, subj, dep] = await Promise.all([loadImg(L.plate), loadImg(L.subject), loadImg(L.depth)]);
+    const gx = 220, gy = Math.max(2, Math.round(gx / asp));
+    const dc = document.createElement('canvas'); dc.width = gx + 1; dc.height = gy + 1;
+    const dctx = dc.getContext('2d'); dctx.drawImage(dep, 0, 0, gx + 1, gy + 1);
+    const dd = dctx.getImageData(0, 0, gx + 1, gy + 1).data;
+    const relief = 0.32, fov0 = 38, dist = 0.5 / Math.tan(fov0 * Math.PI / 360);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    renderer.outputEncoding = THREE.sRGBEncoding; renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+    const fitSize = () => { const s = Math.min(view.clientWidth / W, (view.clientHeight - 8) / H); renderer.setSize(Math.floor(W * s), Math.floor(H * s)); };
+    fitSize();
+    const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(fov0, asp, 0.01, 50);
+    const tex = im => { const t = new THREE.Texture(im); t.encoding = THREE.sRGBEncoding; t.minFilter = THREE.LinearFilter; t.needsUpdate = true; return t; };
+    const geo = new THREE.PlaneGeometry(asp, 1, gx, gy), pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {                    // background: a relief surface from the depth map
+      const u = Math.round((pos.getX(i) / asp + .5) * gx), v = Math.round((.5 - pos.getY(i)) * gy);
+      pos.setZ(i, (dd[(v * (gx + 1) + u) * 4] / 255 - .5) * relief);
+    }
+    const group = new THREE.Group(); group.scale.set(1.1, 1.1, 1);     // a little overscan hides the edges while moving
+    group.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex(plate) })));
+    const zs = (L.subject_depth - .5) * relief + .02, k = (dist - zs) / dist;
+    const sm = new THREE.Mesh(new THREE.PlaneGeometry(asp, 1), new THREE.MeshBasicMaterial({ map: tex(subj), transparent: true }));
+    sm.position.z = zs; sm.scale.set(k, k, 1); group.add(sm); scene.add(group);
+    $('mediaLoad').hidden = true; view.prepend(renderer.domElement);
+    const T = 4;
+    dolly = { stop: false, t0: performance.now() };
+    const me = dolly;
+    const frame = now => {
+      if (me.stop) { renderer.dispose(); return; }
+      const t = ((now - me.t0) / 1000 % T) / T, e = .5 - .5 * Math.cos(2 * Math.PI * t);
+      cam.position.set(0, 0, dist); cam.fov = fov0;
+      if (dollyMove === 'push') cam.position.z = dist * (1 - .24 * e);
+      if (dollyMove === 'zoom') { cam.position.z = dist * (1 + .7 * e); cam.fov = 2 * Math.atan(Math.tan(fov0 * Math.PI / 360) * (dist - zs) / (cam.position.z - zs)) * 360 / Math.PI; }
+      if (dollyMove === 'orbit') { cam.position.x = .11 * Math.sin(2 * Math.PI * t); cam.position.y = .03 * Math.sin(4 * Math.PI * t); cam.position.z = dist * .95; }
+      if (dollyMove === 'rise') { cam.position.y = -.08 + .16 * e; cam.position.z = dist * (1 - .1 * e); }
+      cam.updateProjectionMatrix(); cam.lookAt(0, 0, dollyMove === 'orbit' || dollyMove === 'rise' ? zs : 0);
+      renderer.render(scene, cam); requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+    const opts = $('mediaOpts');
+    opts.innerHTML = Object.entries(MOVES).map(([k2, n]) => `<button class="chip" data-mv="${k2}" aria-pressed="${k2 === dollyMove}">${n}</button>`).join('');
+    opts.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => { dollyMove = b.dataset.mv; me.t0 = performance.now(); opts.querySelectorAll('[data-mv]').forEach(o => o.setAttribute('aria-pressed', o === b)); });
+    const a = $('mediaDl'); a.textContent = 'Download video'; a.removeAttribute('download'); a.href = '#';
+    a.onclick = ev => {
+      ev.preventDefault(); if (me.rec) return;
+      const types = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
+      const type = types.find(x => window.MediaRecorder && MediaRecorder.isTypeSupported(x));
+      if (!type) return toast('This browser cannot record video.');
+      const rec = new MediaRecorder(renderer.domElement.captureStream(30), { mimeType: type, videoBitsPerSecond: 8e6 }), parts = [];
+      me.rec = rec; a.textContent = 'Recording…'; rec.ondataavailable = x => x.data.size && parts.push(x.data);
+      rec.onstop = () => { me.rec = null; a.textContent = 'Download video';
+        const blob = new Blob(parts, { type: type.split(';')[0] }), l = document.createElement('a');
+        l.href = URL.createObjectURL(blob); l.download = (S.name.replace(/\.[a-z0-9]+$/i, '') || 'photo') + '-dolly.' + (type.includes('mp4') ? 'mp4' : 'webm');
+        document.body.appendChild(l); l.click(); setTimeout(() => { URL.revokeObjectURL(l.href); l.remove(); }, 1500); };
+      me.t0 = performance.now(); rec.start(); setTimeout(() => rec.stop(), T * 1000);
+    };
+  }
+
+  // ---------------------------------------------------------------- collage (made here in the browser, no AI needed)
+  const col = { photos: [], layout: 'grid', gap: 16, bg: '#ffffff', useCur: true };
+  const LAYOUTS = { grid: 'Grid', row: 'Row', column: 'Column', feature: 'One big' };
+  const BGS = [['White', '#ffffff'], ['Cream', '#f2e6d8'], ['Olive', '#555934'], ['Black', '#141410']];
+  $('multiIn').onchange = async () => {
+    for (const f of [...$('multiIn').files].slice(0, 6)) {
+      if (!f.type.startsWith('image/') || col.photos.length >= 6) continue;
+      const src = await new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(f); });
+      col.photos.push((await normalise(src)).src);
+    }
+    $('multiIn').value = ''; renderPanel();
+  };
+  const colSrcs = () => (col.useCur && cur() ? [cur().img] : []).concat(col.photos);
+  async function makeCollage() {
+    const srcs = colSrcs(); if (srcs.length < 2) return toast('Add at least two photos.');
+    const ims = await Promise.all(srcs.map(loadImg)), n = ims.length, g = col.gap * 2;
+    let W = 2048, H, cells = [];
+    if (col.layout === 'feature') {
+      H = 1536; const bw = (W - 3 * g) * 2 / 3, sw = W - 3 * g - bw, sh = (H - g * n) / (n - 1);
+      cells.push([g, g, bw, H - 2 * g]);
+      for (let i = 1; i < n; i++) cells.push([2 * g + bw, g + (i - 1) * (sh + g), sw, sh]);
+    } else {
+      const cols = col.layout === 'row' ? n : col.layout === 'column' ? 1 : Math.ceil(Math.sqrt(n)), rows = Math.ceil(n / cols);
+      const ar = col.layout === 'row' ? 4 / 5 : col.layout === 'column' ? 16 / 9 : 1;
+      if (col.layout === 'column') W = 1400;
+      const cw = (W - g * (cols + 1)) / cols, ch = cw / ar; H = Math.round(rows * ch + g * (rows + 1));
+      for (let i = 0; i < n; i++) cells.push([g + (i % cols) * (cw + g), g + Math.floor(i / cols) * (ch + g), cw, ch]);
+    }
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const x = cv.getContext('2d'); x.fillStyle = col.bg; x.fillRect(0, 0, W, H);
+    ims.forEach((im, i) => {
+      const [cx, cy, cw, ch] = cells[i], s = Math.max(cw / im.naturalWidth, ch / im.naturalHeight);
+      const sw = cw / s, sh = ch / s, sx = (im.naturalWidth - sw) / 2, sy = (im.naturalHeight - sh) / 2;
+      x.save(); x.beginPath(); if (x.roundRect) x.roundRect(cx, cy, cw, ch, col.gap ? 14 : 0); else x.rect(cx, cy, cw, ch); x.clip();
+      x.drawImage(im, sx, sy, sw, sh, cx, cy, cw, ch); x.restore();
+    });
+    const url = cv.toDataURL('image/jpeg', .95), label = `Collage of ${n} photos`;
+    if (cur()) { S.last = null; if (S.sel) clearSel(); await push({ image: url }, label); }
+    else { await openPhoto(url, 'Collage'); }
+    toast('Collage made. Undo takes you back.');
+  }
+
+  // ---------------------------------------------------------------- tools
+  document.querySelectorAll('.tool').forEach(t => t.onclick = () => {
+    document.querySelectorAll('.tool').forEach(o => o.setAttribute('aria-pressed', o === t));
+    document.querySelectorAll('.grp').forEach(g => g.querySelector('.gh').classList.toggle('has-active', g.contains(t)));
+    S.tool = t.dataset.tool; canvas.classList.toggle('picking', PICK_TOOLS.includes(S.tool));
+    canvas.classList.toggle('brushing', S.tool === 'brush'); canvas.classList.toggle('moving', S.tool === 'move');
+    if (S.tool !== 'brush') brushCur.hidden = true;
+    if (S.tool === 'move') { if (S.sel) moveSetup(); } else if (S.move || !movePrev.hidden) { S.move = null; resetMoveView(); }
+    if (S.tool !== 'ideas') showBox(null);
+    render(); renderPanel(); $('app').classList.add('panel-open');
+    if (S.tool === 'history') $('histBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+
+  // rail groups fold away; the choice is remembered on this device
+  const folded = new Set((store.get('lumen.folded') || '').split(',').filter(Boolean));
+  document.querySelectorAll('.grp').forEach(g => {
+    const h = g.querySelector('.gh'); h.setAttribute('aria-expanded', !folded.has(g.dataset.g));
+    h.onclick = () => { const open = h.getAttribute('aria-expanded') !== 'true'; h.setAttribute('aria-expanded', open);
+      open ? folded.delete(g.dataset.g) : folded.add(g.dataset.g); store.set('lumen.folded', [...folded].join(',')); };
+  });
+
+  // ---------------------------------------------------------------- start
+  canvas.classList.add('picking');
+  const get = k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } };
+  renderPanel(); resetCard();
+  if (get('lumen.image')) openPhoto(get('lumen.image'), get('lumen.imageName') || 'Photo');
+  else showEmpty();                 // no photo chosen: start empty (open one, or create one from words)
+  const startTool = new URLSearchParams(location.search).get('tool');
+  if (startTool && document.querySelector(`.tool[data-tool="${CSS.escape(startTool)}"]`)) document.querySelector(`.tool[data-tool="${CSS.escape(startTool)}"]`).click();
+  health();
+})();
+</script>
+</body>
+</html>

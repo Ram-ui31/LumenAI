@@ -1,0 +1,9 @@
+-r requirements.txt
+pytest>=8
+httpx>=0.27            # FastAPI TestClient
+modal>=1.0             # deploy / run the Modal apps
+fastapi[standard]>=0.115   # the API (installed separately in the Modal image)
+python-multipart
+invisible-watermark        # export watermark
+PyWavelets
+trimesh                    # 3-D meshes (View in 3D, dolly tests)

@@ -1,0 +1,108 @@
+# LumenAI: all defaults live here. Paths are relative to the backend folder.
+
+backend: diffusers          # diffusers | mflux (generation only, Mac) | stub (no models; tests/UI dev)
+dtype: bfloat16             # bfloat16 | float16 (auto-falls back to float16 on dtype errors; logged)
+
+memory:
+  budget_gb: 16               # hard cap for the accelerator (MPS unified memory / CUDA VRAM); 0 = no cap
+  enforce: true               # true: exceeding the budget raises out-of-memory instead of silently swapping
+  vae_tiling: true            # decode/encode the VAE in tiles (cuts the decode spike by several GB)
+  quant: Q5_K_S               # Q8_0 peaked 13.1 GB and ran out of memory on an outpaint pass under the 16 GB cap; Q5_K_S peaks 8.6 GB (2026-10-01)
+
+paths:
+  outputs: outputs
+  logs: outputs/logs
+  comparisons: outputs/comparisons
+  cache: .cache             # prompt-embedding cache, LaMa weights
+  samples: samples
+
+# Text encoders (CLIP-L + T5-XXL) and VAE come from the base FLUX repo (ungated).
+# FLUX.1-Fill-dev uses the identical encoders/VAE, so one prompt cache serves both.
+text_encoders:
+  repo: black-forest-labs/FLUX.1-schnell
+
+generation:
+  repo: black-forest-labs/FLUX.1-schnell
+  gguf_repo: city96/FLUX.1-schnell-gguf
+  gguf_file: flux1-schnell-Q8_0.gguf        # Q5_K_S / Q4_K_S if memory is tight
+  quantization: gguf-Q8_0
+  scheduler: FlowMatchEulerDiscreteScheduler
+  steps: 4
+  guidance_scale: 0.0
+  width: 1024
+  height: 1024
+  max_sequence_length: 256
+  mflux_quantize: 8                          # used only when backend: mflux
+
+fill:
+  repo: black-forest-labs/FLUX.1-Fill-dev     # GATED: accept licence on huggingface.co, then `hf auth login`
+  gguf_repo: YarvixPA/FLUX.1-Fill-dev-GGUF
+  gguf_file: flux1-fill-dev-Q8_0.gguf
+  quantization: gguf-Q8_0
+  scheduler: FlowMatchEulerDiscreteScheduler
+  steps: 20
+  guidance_scale: 30.0
+  max_sequence_length: 512
+  max_pixels: 800000                         # was 1.2 MP; lowered 2026-09-30: 1.2 MP swapped on the 24 GB Mac (13-17 min per pass)
+
+sam:
+  repo: facebook/sam2.1-hiera-small
+
+lama:
+  url: https://github.com/enesmsahin/simple-lama-inpainting/releases/download/v0.1.0/big-lama.pt
+  file: big-lama.pt
+
+critics:                    # Phase 5 (Innovation C)
+  best_of_n: 4
+  weights: {clip: 0.5, aesthetic: 0.5}      # combined = w_clip*CLIP/40 + w_aes*aesthetic/10
+  clip_repo: openai/clip-vit-large-patch14
+  aesthetic_url: https://github.com/christophschuhmann/improved-aesthetic-predictor/raw/main/sac+logos+ava1-l14-linearMSE.pth
+  yolo_weights: yolo26n.pt                  # Ultralytics YOLO26 nano (COCO), AGPL
+  yolo_conf: 0.25
+  verify_removal: true                      # run the detector after every removal
+  remain_overlap: 0.5                       # a detection counts as "still there" if >= 50% of its box is in the region
+  unknown_class_conf: 0.5                   # if the removed object isn't a COCO class, only flag confident detections
+  retry_dilate_step: 8                      # "Retry" = new seed + this many px more dilation
+
+vlm:                        # Phase 7 (Innovation D)
+  backend: auto                             # auto = mlx on Mac (MPS), transformers on CUDA | mlx | transformers
+  mlx_repo: mlx-community/Qwen3-VL-4B-Instruct-4bit
+  hf_repo: Qwen/Qwen3-VL-4B-Instruct
+  critique: vqa                             # vqa = short yes/no questions on a zoomed crop (default) | json = one rubric
+  max_tokens: 300
+  max_iterations: 3
+  accept_score: 7                           # VLM score (1-10) needed to accept without another iteration
+
+editing:
+  mask_dilate_px: 8
+  latent_preserve: true
+  latent_preserve_stop_frac: 0.1            # stop re-imposing known latents for the final ~10% of steps
+  blend: laplacian                          # none | feather | laplacian
+  pyramid_levels: 6
+  blend_band_high_px: 3                     # transition width for the finest pyramid level (edges stay sharp)
+  blend_band_low_px: 48                     # transition width for the coarsest level (colour/lighting match)
+  feather_px: 12                            # used by blend: feather
+  crop_context_frac: 0.6                    # removal works on a crop around the mask plus this much context
+
+remove:
+  default_mode: lama                        # lama | flux | lama+flux. 2026-10-01: lama was visually best on all 3 object
+                                            # removals; flux variants redrew an object in the hole (see NOTES.md)
+  dilate_px: 16                             # removal-specific (2026-10-01 dilation test: 16 + shadow-aware = cleanest)
+  shadow_aware: true                        # extend the mask below the object, where its shadow falls
+  mask_shape: exact                         # exact | hull | box  (hull/box hide the object's silhouette from FLUX)
+  prompt: "empty background, seamless continuation of the surroundings, nothing in the middle"
+  lama_flux_strength: 0.5                   # was 0.85; 0.5 = refine texture only (round 2, 2026-10-01)
+  auto_prompt: true                         # describe the surroundings with CLIP and put that in the fill prompt
+  auto_prompt_top_k: 2
+  prompt_template: "{bg}, empty, nothing there, seamless continuation of the surroundings"
+  backgrounds: [sand, a sandy beach, the sea, water, sky, clouds, snow, a snowy field, grass, a lawn, soil,
+                a forest, trees, foliage, a cobblestone pavement, a paved sidewalk, an asphalt road, a brick wall,
+                a stone wall, a plastered wall, a wooden floor, a tiled floor, a carpet, a concrete floor, gravel,
+                rocks, a mountain, a city street, a building facade, a fabric texture, a table surface, a bed sheet]
+
+outpaint:
+  overlap_px: 48
+  fill: blur                                # edge | blur  (initial content of the new area)
+  chunk_px: 256                             # max new pixels per side per pass in iterative mode
+  context_px: 512                           # original context included in each iterative pass
+  prompt: ""                                # empty = let the model continue the scene

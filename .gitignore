@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# secrets and local settings
+.env
+*.env.local
+
+# model caches and run outputs (large, regenerated)
+.hf_cache/
+.cache/
+backend/.cache/
+backend/outputs/*
+!backend/outputs/.gitkeep
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

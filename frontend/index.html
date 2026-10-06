@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LumenAI</title>
+<meta name="description" content="LumenAI: edit any photo the way you want, just by typing it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Imbue:opsz,wght@10..100,400..700&family=GFS+Didot&display=swap">
+<style>
+/* Layout: one cream sheet with olive "land masses" at the edges; hero centred like the template, later sections left-aligned rows. */
+:root {
+  --olive: #555934;        /* brand olive (box, blobs, buttons) */
+  --olive-deep: #3e4124;   /* pressed / hover olive */
+  --cream: #F2E6D8;        /* page ground */
+  --cream-hi: #f8f1e8;     /* raised cream (pills, cards) */
+  --ink: #141410;          /* black text */
+  --ink-soft: #33332a;     /* secondary text */
+  --line: #cdbfa9;         /* hairlines on cream */
+  --display: "Imbue", "Didot", "Bodoni 72", Georgia, serif;   /* fashion-magazine condensed Didone for headlines */
+  --body: "Didot", "GFS Didot", "Bodoni 72", Georgia, serif;    /* Didot (built into macOS), GFS Didot elsewhere */
+  --radius-l: 28px; --radius-m: 18px; --radius-s: 12px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; animation: none !important; } }
+body { margin: 0; position: relative; background: var(--cream); color: var(--ink); font: 400 20px/1.6 var(--body); overflow-x: hidden; }
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--olive); outline-offset: 3px; }
+.icon { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* ------------------------------------------------------------------ hero */
+.hero { position: relative; min-height: 100vh; min-height: 100svh; padding: 22px clamp(16px, 4vw, 56px) 80px; }
+/* one continuous olive landscape drawn down the whole page (script below), behind everything */
+.landscape { position: absolute; top: 0; left: 0; width: 100%; pointer-events: none; z-index: 0; overflow: visible; }
+.landscape .land { fill: var(--olive); }
+.landscape .contour { fill: none; stroke: var(--olive); stroke-width: 1.4; }
+.landscape .contour.soft { opacity: .55; }
+body > header, body > main, body > footer { position: relative; z-index: 1; }
+.hero, .section { background: transparent; }
+.blob { position: absolute; z-index: -1; pointer-events: none; }
+.blob path.fill { fill: var(--olive); }
+.blob path.contour { fill: none; stroke: var(--olive); stroke-width: 1.4; }
+.blob path.contour-light { fill: none; stroke: var(--cream); stroke-width: 1.4; opacity: .85; }
+.blob-tr { top: -40px; right: -60px; width: clamp(160px, 18vw, 260px); }
+.blob-bl { bottom: -10px; left: -40px; width: clamp(260px, 30vw, 440px); }
+.blob-br { bottom: -20px; right: -30px; width: clamp(220px, 26vw, 380px); }
+
+.topbar { display: flex; align-items: center; gap: 24px; }
+.logo { font: 600 54px/1 var(--display); letter-spacing: .01em; text-decoration: none; margin-right: 8px; white-space: nowrap; }
+.nav { display: flex; gap: clamp(6px, 1.6vw, 26px); flex: 1; justify-content: center; }
+.nav-item { position: relative; }
+.nav-btn { display: flex; align-items: center; gap: 4px; padding: 8px 6px; background: none; border: 0; border-radius: 10px; cursor: pointer; }
+.nav-btn:hover, .nav-item:focus-within .nav-btn { background: rgba(85, 89, 52, .10); }
+.nav-btn .icon { width: 28px; height: 28px; }
+.nav-btn .chev { width: 16px; height: 16px; stroke-width: 2; }
+.menu { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); min-width: 210px; background: var(--cream-hi);
+        border: 1px solid var(--line); border-radius: var(--radius-s); padding: 8px; display: none; box-shadow: 0 14px 30px -18px rgba(62, 65, 36, .45); z-index: 20; }
+.nav-item:hover .menu, .nav-item:focus-within .menu { display: block; }
+.menu strong { display: block; font: 700 18px/1.3 var(--body); padding: 6px 10px 2px; }
+.menu a { display: block; padding: 6px 10px; border-radius: 8px; text-decoration: none; font-size: 18px; color: var(--ink-soft); }
+.menu a:hover { background: rgba(85, 89, 52, .1); color: var(--ink); }
+.top-actions { display: flex; align-items: center; gap: 14px; }
+.btn-olive { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 58px; padding: 0 34px; font-size: 20px; background: var(--olive); color: var(--cream);
+             border: 0; border-radius: 999px; font-weight: 500; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.btn-olive:hover { background: var(--olive-deep); }
+.btn-olive.top { background: #fff; color: var(--ink); box-shadow: 0 6px 18px -10px rgba(62, 65, 36, .45); }
+.btn-olive.top:hover { background: var(--cream-hi); }
+.avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--cream-hi); display: grid; place-items: center; border: 0; cursor: pointer; }
+.avatar .icon { width: 30px; height: 30px; }
+.crumbs { display: flex; align-items: center; gap: 10px; margin-top: 22px; }
+.crumbs .icon { width: 26px; height: 26px; }
+
+.hero-copy { text-align: center; max-width: 980px; margin: clamp(20px, 5vh, 56px) auto 26px; }
+.hero-copy h1 { font: 600 clamp(56px, 7.6vw, 112px)/.98 var(--display); font-variation-settings: "opsz" 100; letter-spacing: -.005em; margin: 0 0 16px; text-wrap: balance; }
+.hero-copy p { font-size: clamp(21px, 1.9vw, 26px); color: var(--ink-soft); margin: 0 auto; max-width: 700px; text-wrap: balance; }
+
+.stage { position: relative; display: grid; place-items: center; }
+.arrows { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
+.arrows path.trail { fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 8 7; }
+.arrows path.head { fill: none; stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 820px) { .arrows { display: none; } }
+.dropbox { width: min(690px, 100%); background: var(--olive); border-radius: var(--radius-l); padding: 26px 28px 16px; color: var(--cream); position: relative; z-index: 2;
+           transition: transform .2s ease, box-shadow .2s ease; }
+.dropbox.over { transform: scale(1.015); box-shadow: 0 0 0 4px rgba(85, 89, 52, .25); }
+.dropzone { border: 2px dashed rgba(242, 230, 216, .9); border-radius: 16px; min-height: 222px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; position: relative; overflow: hidden; }
+.upload-pill { display: inline-flex; align-items: center; gap: 14px; height: 60px; padding: 0 40px 0 30px; border-radius: 999px; background: var(--cream-hi); color: var(--ink); border: 0; font-weight: 700; font-size: 22px; cursor: pointer; }
+.upload-pill:hover { background: #fff; }
+.drop-hint { display: flex; align-items: center; gap: 10px; font-size: 19px; color: rgba(242, 230, 216, .92); }
+.drop-hint .doc { width: 34px; height: 40px; background: var(--cream-hi); border-radius: 6px; display: grid; place-items: center; color: var(--olive); }
+.drop-hint .doc .icon { width: 20px; height: 20px; }
+.preview { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; gap: 20px; background: var(--olive); padding: 16px; }
+.preview.on { display: flex; }
+.preview img { height: 180px; width: auto; max-width: 52%; object-fit: cover; border-radius: 12px; box-shadow: 0 12px 26px -16px rgba(0,0,0,.6); }
+.preview .meta { text-align: left; }
+.preview .meta b { display: block; font: 600 34px/1.05 var(--display); }
+.preview .meta button { margin-top: 10px; background: none; border: 0; color: var(--cream); text-decoration: underline; cursor: pointer; padding: 0; font-size: 18px; }
+.open-editor { display: flex; align-items: center; justify-content: center; gap: 30px; margin: 16px auto 0; width: max-content; padding: 0 24px 0 32px; height: 56px; border: 1.6px solid var(--cream);
+               border-radius: 999px; color: var(--cream); text-decoration: none; font-weight: 700; font-size: 20px; transition: background .15s; }
+.open-editor:hover { background: rgba(242, 230, 216, .12); }
+.open-editor[aria-disabled="true"] { opacity: .8; }
+.open-editor .icon { width: 22px; height: 22px; }
+
+.float-card { position: absolute; z-index: 3; background: var(--cream-hi); padding: 7px; border-radius: 22px; cursor: grab; touch-action: none;
+              box-shadow: 0 22px 40px -22px rgba(62, 65, 36, .55); transition: transform .25s ease, box-shadow .25s; }
+.float-card:hover { box-shadow: 0 28px 50px -22px rgba(62, 65, 36, .7); }
+.float-card:active { cursor: grabbing; }
+.float-card img { border-radius: 16px; width: 100%; aspect-ratio: 1; object-fit: cover; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+.float-card .fx { position: absolute; top: 18px; right: 18px; width: 40px; height: 40px; border-radius: 50%; background: #fff; display: grid; place-items: center;
+                  font: italic 600 17px/1 var(--display); color: var(--ink); }
+.float-card .split { position: absolute; top: 7px; bottom: 7px; left: 50%; width: 2px; background: rgba(255, 255, 255, .9); }
+.float-card .split::after { content: ""; position: absolute; top: 56%; left: 50%; width: 28px; height: 28px; transform: translate(-50%, -50%); border-radius: 50%;
+                             background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 7l-5 5 5 5M15 7l5 5-5 5' fill='none' stroke='%23141410' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat; }
+.float-card .before { position: absolute; top: 7px; left: 7px; bottom: 7px; width: calc(50% - 7px); overflow: hidden; border-radius: 16px 0 0 16px; }
+.float-card .before img { width: auto; height: 100%; max-width: none; aspect-ratio: 1; filter: grayscale(.85) brightness(.92); border-radius: 0; }
+.card-a { width: clamp(160px, 14.5vw, 215px); left: clamp(8px, 6vw, 130px); top: 10%; transform: rotate(-14deg); }
+.card-b { width: clamp(120px, 10vw, 150px); right: clamp(8px, 6.5vw, 140px); top: -4%; transform: rotate(13deg); }
+.card-c { width: clamp(140px, 12.5vw, 185px); right: clamp(12px, 8vw, 165px); bottom: -14%; transform: rotate(9deg); }
+.drag-tip { text-align: center; font-size: 18px; color: var(--ink-soft); margin-top: 18px; }
+.share-fab { position: absolute; left: clamp(16px, 2vw, 22px); bottom: 110px; width: 58px; height: 58px; border-radius: 50%; border: 0; background: var(--cream-hi); display: grid; place-items: center; cursor: pointer; z-index: 4; }
+
+/* ------------------------------------------------------------------ sections */
+.section { position: relative; padding: clamp(64px, 9vw, 120px) clamp(16px, 5vw, 72px); }
+.section h2 { font: 600 clamp(46px, 5.6vw, 84px)/1 var(--display); font-variation-settings: "opsz" 100; letter-spacing: -.005em; margin: 0; text-wrap: balance; }
+.section .lede { color: var(--ink-soft); max-width: 640px; }
+
+/* carousel */
+.showcase h2 { text-align: center; max-width: 860px; margin: 0 auto 44px; }
+.rail-wrap { position: relative; }
+.rail { display: flex; gap: 18px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 4px 2px 8px; cursor: grab; }
+.rail::-webkit-scrollbar { display: none; }
+.rail.dragging { cursor: grabbing; scroll-snap-type: none; }
+.rail.dragging .tile { pointer-events: none; }
+.tile { flex: 0 0 calc((100% - 4 * 18px) / 4.5); aspect-ratio: 1; position: relative; border-radius: var(--radius-m); overflow: hidden; scroll-snap-align: start; display: block; }
+.tile img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s ease; user-select: none; -webkit-user-drag: none; }
+.tile .edit-chip { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -40%); opacity: 0; background: #fff; color: var(--ink); border-radius: 999px;
+                   padding: 12px 24px; font: 400 18px/1 var(--body); letter-spacing: .01em; white-space: nowrap; transition: opacity .2s, transform .2s; text-decoration: none; }
+.tile img { transition: transform .5s ease, filter .35s ease; }
+.tile:hover img, .tile:focus-visible img { transform: scale(1.03); filter: brightness(.55) saturate(.6); }
+.tile:hover .edit-chip, .tile:focus-visible .edit-chip { opacity: 1; transform: translate(-50%, -50%); }
+.rail-progress { height: 2px; background: var(--line); border-radius: 2px; margin: 26px auto 0; width: min(260px, 60%); overflow: hidden; }
+.rail-progress span { display: block; height: 100%; width: 30%; background: var(--olive); border-radius: 2px; transform-origin: left; }
+.swipe-note { text-align: center; font-size: 17px; color: var(--ink-soft); margin-top: 10px; }
+
+/* three pillars */
+.pillars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto auto auto; column-gap: clamp(28px, 4vw, 64px); row-gap: 0; text-align: center; max-width: 1240px; margin: 0 auto; }
+.pillar { display: grid; grid-row: span 3; grid-template-rows: subgrid; align-content: start; }
+.pillar .ring { width: 96px; height: 96px; border-radius: 50%; background: var(--olive); color: var(--cream); display: grid; place-items: center; margin: 0 auto 26px; }
+.pillar .ring .icon { width: 38px; height: 38px; stroke-width: 1.5; }
+.pillar h3 { font: 600 clamp(40px, 3.6vw, 52px)/1.02 var(--display); margin: 0 0 14px; letter-spacing: -.005em; align-self: end; text-wrap: balance; }
+.pillar p { margin: 0 auto; max-width: 400px; font-size: 23px; line-height: 1.55; color: var(--ink-soft); }
+
+/* walkthrough rows */
+.rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(72px, 9vw, 130px); max-width: 1240px; margin: 0 auto; }
+.rows > * { min-width: 0; }
+.row { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(32px, 6vw, 96px); align-items: center; }
+.row.flip .row-text { order: 2; }
+.row-text h2 { font-size: clamp(42px, 4.6vw, 68px); margin-bottom: 20px; }
+.row-text p { margin: 0; color: var(--ink-soft); max-width: 600px; font-size: 21px; line-height: 1.6; }
+.row-text a.inl { color: var(--olive); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.row > * { min-width: 0; }
+.collage { display: grid; grid-template-columns: 116px minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: 116px auto; gap: 10px; }
+.collage .ico-tile { background: var(--olive); color: var(--cream); border-radius: var(--radius-s); display: grid; place-items: center; }
+.collage .ico-tile .icon { width: 46px; height: 46px; stroke-width: 1.4; }
+.collage .ph { border-radius: var(--radius-s); overflow: hidden; position: relative; background: var(--cream-hi); }
+.collage .ph img { width: 100%; height: 100%; object-fit: cover; }
+.collage .big { grid-column: 1 / -1; aspect-ratio: 16 / 10; }
+.collage .ph.zoom { cursor: zoom-in; z-index: 1; transition: transform .6s cubic-bezier(.34, 1.45, .64, 1), box-shadow .4s ease; }
+.collage .ph.zoom.zl { transform-origin: top left; } .collage .ph.zoom.zr { transform-origin: top right; }
+.collage .ph.zoom:hover, .collage .ph.zoom:focus-visible { transform: scale(2.05); z-index: 6; box-shadow: 0 30px 60px -24px rgba(30, 32, 18, .6), 0 0 0 4px var(--cream-hi);
+  animation: tile-breathe 3.2s ease-in-out .6s infinite; }
+.collage .ph.zoom .tag { transition: transform .6s cubic-bezier(.34, 1.45, .64, 1); transform-origin: top left; }
+.collage .ph.zoom:hover .tag, .collage .ph.zoom:focus-visible .tag { transform: scale(.5); }
+@keyframes tile-breathe { 0%, 100% { transform: scale(2.05); } 50% { transform: scale(2.12); } }
+@media (max-width: 820px) { .collage .ph.zoom:hover { transform: scale(1.5); animation: none; } }
+@media (prefers-reduced-motion: reduce) { .collage .ph.zoom:hover { animation: none; } }
+.collage .tag { position: absolute; left: 12px; bottom: 12px; background: rgba(248, 241, 232, .94); color: var(--ink); border-radius: 999px; padding: 7px 16px; font-size: 17px; }
+.collage .tag.top { bottom: auto; top: 12px; }
+.checker { background-color: #e7dccd; background-image: linear-gradient(45deg, #d8ccba 25%, transparent 25%, transparent 75%, #d8ccba 75%), linear-gradient(45deg, #d8ccba 25%, transparent 25%, transparent 75%, #d8ccba 75%);
+           background-size: 22px 22px; background-position: 0 0, 11px 11px; }
+.collage.side { grid-template-columns: minmax(0, 1fr) minmax(0, 2.1fr); grid-template-rows: auto auto auto; }
+.collage.side .ico-tile { aspect-ratio: 1; }
+.collage.side .sq { aspect-ratio: 1; }
+.collage.side .tall { grid-column: 2; grid-row: 1 / span 3; }
+.collage .prompt-tile { background: #efe5d6; }
+.collage .prompt-tile img { object-fit: contain; padding: 30px 6px 4px; }
+.collage.side .chip { background: var(--cream-hi); border-radius: var(--radius-s); display: grid; place-items: center; font-weight: 700; font-size: 19px; padding: 14px 6px; text-align: center; }
+.views4 { display: grid; grid-template-columns: 1fr 1fr; align-content: center; background: #f5f5f3 !important; }
+.views4 img { aspect-ratio: 1; object-fit: contain !important; }
+
+/* tabs */
+.tabs { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 999px; padding: 5px; width: max-content; max-width: 100%; margin: 0 auto 56px; background: var(--cream-hi); }
+.tab { border: 0; background: none; border-radius: 999px; padding: 11px 22px; font-size: 18px; cursor: pointer; color: var(--ink-soft); }
+.tab[aria-selected="true"] { background: var(--olive); color: var(--cream); }
+.panel[hidden] { display: none; }
+
+
+/* stepper: four step cards on the left, a breathing preview canvas on the right */
+.stepper { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); grid-template-rows: auto 1fr; column-gap: clamp(36px, 5vw, 84px); row-gap: 36px; align-items: center; }
+.stepper-h { grid-column: 1 / -1; text-align: center; }
+.steps { display: grid; gap: 14px; align-self: center; }
+.step { position: relative; display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 20px; align-items: start; text-align: left; width: 100%;
+        padding: 20px 24px; border-radius: 24px; border: 1px solid var(--line); background: rgba(248, 241, 232, .65); color: var(--ink); cursor: pointer; overflow: hidden;
+        transition: padding .55s cubic-bezier(.34, 1.4, .64, 1), background-color .4s ease, color .4s ease, border-color .4s ease, box-shadow .55s ease, transform .55s cubic-bezier(.34, 1.4, .64, 1); }
+.step:hover { border-color: var(--olive); }
+.step .num { width: 50px; height: 50px; border-radius: 50%; border: 1.5px solid var(--olive); display: grid; place-items: center; font: 600 28px/1 var(--display); color: var(--olive);
+             transition: background-color .4s, color .4s, border-color .4s; }
+.step .st-title { display: block; font: 600 clamp(30px, 2.6vw, 38px)/1.05 var(--display); margin: 2px 0 6px; }
+.step .st-text { display: block; font-size: 19px; line-height: 1.5; color: var(--ink-soft); transition: color .4s; }
+.step[aria-selected="true"] { padding: 30px 30px; background: var(--olive); color: var(--cream); border-color: var(--olive); transform: translateX(6px);
+        box-shadow: 0 26px 54px -26px rgba(62, 65, 36, .75), 0 0 0 7px rgba(85, 89, 52, .13), 0 0 60px -10px rgba(85, 89, 52, .35); }
+.step[aria-selected="true"] .num { background: var(--cream); color: var(--olive); border-color: var(--cream); }
+.step[aria-selected="true"] .st-text { color: rgba(242, 230, 216, .9); }
+.st-bar { position: absolute; left: 30px; right: 30px; bottom: 14px; height: 2px; background: rgba(242, 230, 216, .25); border-radius: 2px; opacity: 0; overflow: hidden; }
+.st-bar i { display: block; height: 100%; width: 100%; background: var(--cream); transform: scaleX(0); transform-origin: left; }
+.step[aria-selected="true"] .st-bar { opacity: 1; }
+.playing .step[aria-selected="true"] .st-bar i { animation: st-fill 4s linear forwards; }
+@keyframes st-fill { to { transform: scaleX(1); } }
+.sp-stage { padding: 12px; }
+.sp-canvas { position: relative; aspect-ratio: 4 / 5; max-height: 720px; margin-left: auto; border-radius: 30px; overflow: hidden; background: var(--cream-hi);
+             box-shadow: 0 34px 70px -38px rgba(62, 65, 36, .7), 0 0 0 10px rgba(248, 241, 232, .7); }
+.sp-canvas.breathe { animation: sp-breathe .9s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes sp-breathe { 0% { transform: scale(.975); } 55% { transform: scale(1.012); } 100% { transform: scale(1); } }
+.sp-layer { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform: scale(1.07);
+            transition: opacity .75s ease, transform 1.4s cubic-bezier(.2, .8, .2, 1); }
+.sp-layer.on { opacity: 1; transform: scale(1); }
+.sp-chip { position: absolute; left: 22px; bottom: 22px; display: inline-flex; align-items: center; gap: 10px; padding: 12px 20px; border-radius: 999px; background: rgba(248, 241, 232, .95);
+           font-size: 19px; color: var(--ink); box-shadow: 0 10px 24px -14px rgba(0,0,0,.45); transition: opacity .25s ease, transform .25s ease; }
+.sp-chip .icon { width: 20px; height: 20px; color: var(--olive); }
+.sp-chip.swap { opacity: 0; transform: translateY(6px); }
+@media (max-width: 820px) {
+  .stepper { grid-template-columns: minmax(0, 1fr); }
+  .sp-stage { order: -1; grid-row: 2; }
+  .steps { grid-row: 3; }
+  .step[aria-selected="true"] { transform: none; padding: 24px; }
+  .sp-canvas { margin: 0 auto; max-height: 520px; }
+}
+@media (prefers-reduced-motion: reduce) { .sp-canvas.breathe { animation: none; } }
+
+/* all features */
+.all h2 { text-align: center; }
+.all .lede { text-align: center; margin: 16px auto 56px; font-size: 22px; }
+.grid16 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px 32px; max-width: 1200px; margin: 0 auto; }
+.feat { display: grid; grid-template-columns: 58px 1fr; gap: 16px; align-items: start; }
+.feat .sq-ico .icon { width: 28px; height: 28px; }
+.feat .sq-ico { width: 58px; height: 58px; border-radius: 14px; background: var(--olive); color: var(--cream); display: grid; place-items: center; }
+.feat h3 { font: 600 30px/1.05 var(--display); margin: 0 0 6px; }
+.feat p { margin: 0; font-size: 18px; line-height: 1.5; color: var(--ink-soft); }
+.soon { font: 400 14px/1.4 var(--body); color: var(--olive); border: 1px solid var(--olive); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; white-space: nowrap; }
+
+.cta-band { text-align: center; }
+.cta-band h2 { margin-bottom: 26px; }
+footer { padding: 36px clamp(16px, 5vw, 72px) 44px; display: flex; flex-wrap: wrap; gap: 14px 30px; align-items: center; justify-content: space-between; font-size: 17px; color: var(--ink-soft); }
+footer .logo { font-size: 32px; color: var(--ink); }
+
+/* ------------------------------------------------------------------ responsive */
+@media (max-width: 1100px) {
+  .nav { display: none; }
+  .topbar { justify-content: space-between; }
+  .grid16 { grid-template-columns: repeat(2, 1fr); }
+  .tile { flex-basis: calc((100% - 2 * 18px) / 2.5); }
+}
+@media (max-width: 820px) {
+  .float-card { position: relative; inset: auto; transform: none; width: 30%; }
+  .cards-row { display: flex; justify-content: center; gap: 4%; margin-top: 28px; }
+  .card-a { transform: rotate(-6deg); } .card-b { transform: rotate(5deg); } .card-c { transform: rotate(4deg); }
+  .pillars { grid-template-columns: 1fr; row-gap: 48px; }
+  .pillar { grid-row: auto; grid-template-rows: none; }
+  .row, .row.flip { grid-template-columns: minmax(0, 1fr); }
+  .section > .blob, .blob path.contour { display: none; }
+  .blob-bl { width: 150px; } .blob-br { width: 140px; } .blob-tr { width: 120px; }
+  .tabs { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; width: 100%; scrollbar-width: none; border-radius: 22px; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { white-space: nowrap; }
+  .row.flip .row-text { order: 0; }
+  .share-fab { display: none; }
+  .btn-olive.top { height: 46px; padding: 0 20px; }
+  .avatar { width: 50px; height: 50px; }
+}
+@media (max-width: 560px) {
+  .grid16 { grid-template-columns: 1fr; }
+  .collage { grid-template-columns: 84px 1fr 1fr; grid-template-rows: 84px auto; }
+  .tile { flex-basis: calc((100% - 18px) / 1.4); }
+  .hero-copy h1 { font-size: 54px; }
+  .logo { font-size: 40px; }
+  .btn-olive.top { height: 42px; padding: 0 16px; font-size: 17px; }
+  .avatar { width: 44px; height: 44px; }
+  .dropzone { min-height: 190px; }
+  .upload-pill { padding: 0 28px 0 22px; }
+}
+@media (min-width: 821px) { .cards-row { display: contents; } }
+
+/* benchmarks */
+.bench { padding-top: 0; text-align: center; }
+.bench-link { display: inline-flex; align-items: center; gap: .3em; border: 0; background: none; padding: 0; cursor: pointer; white-space: nowrap;
+              font: 700 clamp(26px, 3.6vw, 54px)/1.1 var(--display); letter-spacing: .01em; color: var(--ink); }
+.bench-link .icon { width: .7em; height: .7em; stroke-width: 2; transition: transform .25s ease; }
+.bench-link:hover span { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .15em; }
+.bench-link:hover .icon { transform: translateX(6px); }
+.bench-kicker { font-size: 15px; letter-spacing: .14em; text-transform: uppercase; opacity: .8; }
+.bench-sub { font-size: 19px; opacity: .9; }
+.bench-arrow { width: 40px; height: 40px; }
+.bench-card { width: min(980px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 0; border-radius: var(--radius-l); background: var(--cream-hi); color: var(--ink);
+              box-shadow: 0 40px 90px -30px rgba(20, 20, 16, .6); overflow: auto; }
+.bench-card::backdrop { background: rgba(20, 20, 16, .5); }
+.bench-card[open] { animation: bc-in .35s cubic-bezier(.2, .9, .2, 1); }
+@keyframes bc-in { from { opacity: 0; transform: translateY(14px) scale(.985); } }
+.bc-head { display: flex; gap: 20px; justify-content: space-between; align-items: start; padding: 30px 32px 10px; }
+.bc-head h3 { font: 600 clamp(36px, 4vw, 54px)/1 var(--display); margin: 6px 0 10px; }
+.bc-head p { margin: 0; color: var(--ink-soft); font-size: 18px; max-width: 640px; }
+.bc-x { flex: none; width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--line); background: none; cursor: pointer; display: grid; place-items: center; color: var(--ink); }
+.bc-x:hover { background: var(--cream); }
+.bc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 16px 32px; }
+.bc-stats > div { background: var(--olive); color: var(--cream); border-radius: var(--radius-m); padding: 16px 18px; display: grid; gap: 4px; }
+.bc-stats b { font: 600 40px/1 var(--display); }
+.bc-stats span { font-size: 16px; line-height: 1.35; opacity: .92; }
+.bc-table-wrap { padding: 4px 32px 8px; overflow-x: auto; }
+.bc-table { width: 100%; border-collapse: collapse; font-size: 18px; }
+.bc-table th, .bc-table td { padding: 11px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.bc-table thead th { font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); font-weight: 500; }
+.bc-table thead small { text-transform: none; letter-spacing: 0; }
+.bc-table tbody th { font-weight: 600; }
+.bc-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.vb { display: inline-block; width: 90px; height: 8px; border-radius: 999px; background: rgba(85, 89, 52, .15); margin-right: 10px; vertical-align: middle; position: relative; overflow: hidden; }
+.vb i { position: absolute; inset: 0 auto 0 0; background: var(--olive); border-radius: 999px; }
+.bench-card h4 { font: 600 30px/1.1 var(--display); margin: 18px 32px 8px; }
+.bc-wins { list-style: none; margin: 0; padding: 0 32px 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; font-size: 17px; color: var(--ink-soft); }
+.bc-wins li { padding-left: 18px; position: relative; }
+.bc-wins li::before { content: ""; position: absolute; left: 0; top: .6em; width: 8px; height: 8px; border-radius: 50%; background: var(--olive); }
+.bc-wins b { color: var(--ink); font-weight: 600; }
+@media (max-width: 820px) {
+  .bc-stats, .bc-wins { grid-template-columns: 1fr; } .bc-head, .bc-stats { padding-left: 18px; padding-right: 18px; }
+  .bc-table-wrap { padding: 4px 18px 8px; } .bench-card h4 { margin-left: 18px; } .bc-wins { padding: 0 18px 24px; }
+}
+</style>
+</head>
+<body>
+<svg class="landscape" id="landscape" aria-hidden="true"></svg>
+
+<!-- one sprite for every icon on the page -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-9 9"/></symbol>
+    <symbol id="i-eraser" viewBox="0 0 24 24"><path d="M7 21h13"/><path d="M5.6 15.6l8.5-8.5a2 2 0 0 1 2.8 0l2.4 2.4a2 2 0 0 1 0 2.8L13 18.6a2 2 0 0 1-1.4.6H8.4a2 2 0 0 1-1.4-.6l-1.4-1.4a1.1 1.1 0 0 1 0-1.6z"/><path d="M10 11l5.5 5.5"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.8-1.7H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.1"/><circle cx="10" cy="7.3" r="1.1"/><circle cx="14.6" cy="7.4" r="1.1"/></symbol>
+    <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 2.8l8 4.5v9.4l-8 4.5-8-4.5V7.3z"/><path d="M4 7.3l8 4.5 8-4.5M12 11.8v9.4"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></symbol>
+    <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.2"/><path d="M8 21l2-7-3-3.5 5-1.5 5 1.5-3 3.5 2 7"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2V16h5v-.2c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3z"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.2-4 4.2-6 8-6s6.8 2 8 6"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h4.5v-5h3v5H18V9.5"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5"/><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M9 13h6M9 16.5c1.5-1.5 3-1.5 6 0"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15M14 6.5l5.5 5.5-5.5 5.5"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3.8M7.8 7.6L12 3.8l4.2 3.8"/><path d="M6.5 11H5.8A1.8 1.8 0 0 0 4 12.8v6.4A1.8 1.8 0 0 0 5.8 21h12.4a1.8 1.8 0 0 0 1.8-1.8v-6.4A1.8 1.8 0 0 0 18.2 11h-.7"/></symbol>
+    <symbol id="i-imgstar" viewBox="0 0 24 24"><path d="M13 4H6.5A2.5 2.5 0 0 0 4 6.5v11A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5V12"/><path d="M4 16l4.5-4.5 4 4 2.5-2.5L20 18"/><path d="M18.5 2.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><rect x="7" y="7.2" width="3.4" height="3.4" rx=".8"/><rect x="7" y="13.4" width="3.4" height="3.4" rx=".8"/><path d="M13 8.9h4M13 15.1h4"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 12.5a7.5 7.5 0 0 1-11 6.6L4 20.5l1.4-4.6A7.5 7.5 0 1 1 20 12.5z"/><path d="M9 11h6M9 14h4"/></symbol>
+    <symbol id="i-scissors" viewBox="0 0 24 24"><circle cx="6" cy="6.5" r="2.5"/><circle cx="6" cy="17.5" r="2.5"/><path d="M8.2 7.8L20 18M8.2 16.2L20 6"/></symbol>
+    <symbol id="i-brush" viewBox="0 0 24 24"><path d="M14.5 4.5l5 5-8 8-5-5z"/><path d="M6.5 12.5c-2 .5-3 2.5-3 4.5 0 1.5-.5 2.5-1 3 2.5.5 5 0 6.5-1.5 1.2-1.2 1.4-2.6 1-3.5"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.2"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></symbol>
+    <symbol id="i-focus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M3.5 8V5.5a2 2 0 0 1 2-2H8M16 3.5h2.5a2 2 0 0 1 2 2V8M20.5 16v2.5a2 2 0 0 1-2 2H16M8 20.5H5.5a2 2 0 0 1-2-2V16"/></symbol>
+    <symbol id="i-frame" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M3.5 15l4.5-4.5 4 4M13.5 13l2-2 5 5"/><path d="M8.5 3.5v3M15.5 3.5v3"/></symbol>
+    <symbol id="i-orbit" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9.5" ry="4"/><path d="M12 3.5v4M12 16.5v4"/><circle cx="12" cy="12" r="2.3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M12 8v8M8 12h8"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.7 2.7L16.2 9.5"/></symbol>
+    <symbol id="i-wand" viewBox="0 0 24 24"><path d="M4 20L15 9"/><path d="M14 4l1 2 2 1-2 1-1 2-1-2-2-1 2-1z"/><path d="M19 11l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z"/></symbol>
+    <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><path d="M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></symbol>
+    <symbol id="i-aperture" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5l3.5 6M20.4 10.5l-6.9.3M17.5 18.3l-3.4-6M8.5 20l3.5-6M3.6 13.5l6.9-.3M6.5 5.7l3.4 6"/></symbol>
+    <symbol id="i-film" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M7.5 5v14M16.5 5v14M3.5 9.5h4M3.5 14.5h4M16.5 9.5h4M16.5 14.5h4"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="8" height="10" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="6" rx="1.5"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.5"/><rect x="3.5" y="15.5" width="8" height="5" rx="1.5"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4.5 17a8.5 8.5 0 1 1 15 0"/><path d="M12 13.5l4-4.5"/><circle cx="12" cy="14" r="1.4"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-blur" viewBox="0 0 24 24"><path d="M3 8h9M3 12h13M3 16h9"/><path d="M15 8h2M19 12h2M15 16h2" opacity=".55"/></symbol>
+  </defs>
+</svg>
+
+<header class="hero" id="top">
+
+  <div class="topbar">
+    <a class="logo" href="#top">LumenAI</a>
+    <nav class="nav" aria-label="Main">
+      <div class="nav-item"><button class="nav-btn" aria-label="Edit photos"><svg class="icon"><use href="#i-image"/></svg><svg class="icon chev"><use href="#i-chev"/></svg></button>
+        <div class="menu"><strong>Edit photos</strong><a href="editor.html">Edit with words</a><a href="editor.html">Generative fill</a><a href="editor.html">Expand the frame</a></div></div>
+      <div class="nav-item"><button class="nav-btn" aria-label="Remove"><svg class="icon"><use href="#i-eraser"/></svg><svg class="icon chev"><use href="#i-chev"/></svg></button>
+        <div class="menu"><strong>Remove</strong><a href="editor.html">Remove objects</a><a href="editor.html">Remove background</a></div></div>
+      <div class="nav-item"><button class="nav-btn" aria-label="Colour"><svg class="icon"><use href="#i-palette"/></svg><svg class="icon chev"><use href="#i-chev"/></svg></button>
+        <div class="menu"><strong>Colour</strong><a href="editor.html">Recolour anything</a><a href="editor.html">Patterns and stripes</a></div></div>
+      <div class="nav-item"><button class="nav-btn" aria-label="People"><svg class="icon"><use href="#i-person"/></svg><svg class="icon chev"><use href="#i-chev"/></svg></button>
+        <div class="menu"><strong>People</strong><a href="editor.html">Change the pose</a><a href="editor.html">Relight a portrait</a></div></div>
+      <div class="nav-item"><button class="nav-btn" aria-label="3D"><svg class="icon"><use href="#i-cube"/></svg><svg class="icon chev"><use href="#i-chev"/></svg></button>
+        <div class="menu"><strong>3D</strong><a href="editor.html">View in 3D</a><a href="editor.html">New camera angle</a></div></div>
+      <div class="nav-item"><button class="nav-btn" aria-label="Create"><svg class="icon"><use href="#i-sparkle"/></svg><svg class="icon chev"><use href="#i-chev"/></svg></button>
+        <div class="menu"><strong>Create</strong><a href="editor.html">Generate from text</a><a href="editor.html">Style transfer</a></div></div>
+      <div class="nav-item"><button class="nav-btn" aria-label="Trending"><svg class="icon"><use href="#i-trend"/></svg><svg class="icon chev"><use href="#i-chev"/></svg></button>
+        <div class="menu"><strong>Trending</strong><a href="editor.html?tool=trends">Trending today</a><a href="editor.html?tool=trends">Trends for a topic</a></div></div>
+      <div class="nav-item"><button class="nav-btn" aria-label="Ideas"><svg class="icon"><use href="#i-bulb"/></svg><svg class="icon chev"><use href="#i-chev"/></svg></button>
+        <div class="menu"><strong>Ideas</strong><a href="editor.html">What to add</a><a href="#features">All features</a></div></div>
+    </nav>
+    <div class="top-actions">
+      <a class="btn-olive top" href="editor.html">Start editing</a>
+      <button class="avatar" aria-label="Your account"><svg class="icon"><use href="#i-user"/></svg></button>
+    </div>
+  </div>
+
+  <div class="crumbs" aria-label="You are here"><svg class="icon"><use href="#i-home"/></svg><svg class="icon" style="width:18px;height:18px"><use href="#i-right"/></svg></div>
+
+  <div class="hero-copy">
+    <h1>Every photo, exactly the way you want it.</h1>
+    <p>Say what you'd like changed. Remove, recolour, relight or restyle, and everything just works.</p>
+  </div>
+
+  <div class="stage">
+    <div class="dropbox" id="dropbox">
+      <div class="dropzone" id="dropzone">
+        <button class="upload-pill" id="pick"><svg class="icon"><use href="#i-upload"/></svg>Upload image</button>
+        <div class="drop-hint"><span class="doc"><svg class="icon"><use href="#i-doc"/></svg></span>or drop a photo here</div>
+        <input type="file" id="file" accept="image/*" hidden>
+        <div class="preview" id="preview">
+          <img id="previewImg" alt="">
+          <div class="meta"><b>Ready to edit</b><span id="previewName"></span><br><button id="clear">Choose another photo</button></div>
+        </div>
+      </div>
+      <a class="open-editor" id="openEditor" href="editor.html">Open editor <svg class="icon"><use href="#i-arrow"/></svg></a>
+    </div>
+
+    <svg class="arrows" id="arrows" aria-hidden="true"></svg>
+    <div class="cards-row">
+      <div class="float-card card-a" draggable="true" data-src="assets/hero_perfume.jpg" data-name="Perfume" title="Drag me into the box">
+        <img src="assets/hero_perfume.jpg" alt="Olive glass perfume bottle on stone">
+        <div class="before"><img src="assets/hero_perfume.jpg" alt=""></div>
+        <span class="split"></span><span class="fx">fx</span>
+      </div>
+      <div class="float-card card-b" draggable="true" data-src="assets/hero_room.jpg" data-name="Interior" title="Drag me into the box">
+        <img src="assets/hero_room.jpg" alt="Calm living room with an olive armchair"><span class="fx" style="width:30px;height:30px;font-size:13px;top:12px;right:12px">fx</span>
+      </div>
+      <div class="float-card card-c" draggable="true" data-src="assets/hero_woman.jpg" data-name="Portrait" title="Drag me into the box">
+        <img src="assets/hero_woman.jpg" alt="Portrait of a woman in a cream outfit">
+      </div>
+    </div>
+  </div>
+  <p class="drag-tip" id="dragTip">Try it: drag any of these photos into the box.</p>
+
+  <button class="share-fab" aria-label="Share LumenAI" id="share"><svg class="icon"><use href="#i-share"/></svg></button>
+</header>
+
+<main>
+  <!-- ------------------------------------------------------------ showcase -->
+  <section class="section showcase" aria-labelledby="sc-h">
+    <h2 id="sc-h">Create studio-quality visuals in just a few clicks.</h2>
+    <div class="rail-wrap">
+      <div class="rail" id="rail" aria-label="Example photos, swipe to see more">
+        <a class="tile" href="editor.html" data-src="assets/c1_mercedes.jpg"><img src="assets/c1_mercedes.jpg" alt="Classic Mercedes front in black and white"><span class="edit-chip">Edit this image →</span></a>
+        <a class="tile" href="editor.html" data-src="assets/c2_white_brown_model.jpg"><img src="assets/c2_white_brown_model.jpg" alt="Woman in a white blazer at a café table"><span class="edit-chip">Edit this image →</span></a>
+        <a class="tile" href="editor.html" data-src="assets/c3_road.jpg"><img src="assets/c3_road.jpg" alt="Narrow sunny street with shops"><span class="edit-chip">Edit this image →</span></a>
+        <a class="tile" href="editor.html" data-src="assets/c4_wimbeldon.jpg"><img src="assets/c4_wimbeldon.jpg" alt="Woman in white holding a coffee cup on a street"><span class="edit-chip">Edit this image →</span></a>
+        <a class="tile" href="editor.html" data-src="assets/c5_white_blue.jpg"><img src="assets/c5_white_blue.jpg" alt="Woman in a blue shirt and white trousers walking"><span class="edit-chip">Edit this image →</span></a>
+      </div>
+      <div class="rail-progress" aria-hidden="true"><span id="railBar"></span></div>
+      <p class="swipe-note">Swipe to see more</p>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------ three pillars -->
+  <section class="section" aria-label="Why LumenAI" data-band=".3">
+    <div class="pillars">
+      <div class="pillar">
+        <div class="ring"><svg class="icon"><use href="#i-imgstar"/></svg></div>
+        <h3>Powers AI editing and creation</h3>
+        <p>AI photo editing tools let you remove backgrounds, enhance images, and generate visuals from text in seconds.</p>
+      </div>
+      <div class="pillar">
+        <div class="ring"><svg class="icon"><use href="#i-download"/></svg></div>
+        <h3>Combines everything in one platform</h3>
+        <p>Create, edit, and design visuals with AI tools in one unified creative platform.</p>
+      </div>
+      <div class="pillar">
+        <div class="ring"><svg class="icon"><use href="#i-list"/></svg></div>
+        <h3>Scales from quick fixes to full projects</h3>
+        <p>Start with a simple retouch or build a complete visual from scratch, with the same editor and the same workflow.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------ walkthrough -->
+  <section class="section" aria-label="How LumenAI works" data-band=".45">
+    <div class="rows">
+
+      <div class="row">
+        <div class="row-text">
+          <h2>Make quick, precise edits just by typing them</h2>
+          <p>Type what you want the way you'd say it to a friend, like "make the backpack navy blue" or "remove the person on the left".
+             LumenAI finds the right spot, makes the change and leaves everything else exactly as it was. Colours stay true, edges stay clean,
+             and a <a class="inl" href="editor.html">colour slider</a> lets you fine-tune the shade afterwards.</p>
+        </div>
+        <div class="collage" aria-label="Before and after: a yellow backpack recoloured navy blue">
+          <div class="ico-tile"><svg class="icon"><use href="#i-chat"/></svg></div>
+          <div class="ph zoom zl" tabindex="0"><img src="assets/w_bag_before.jpg" alt="Yellow backpack, before" style="object-position:50% 45%;transform:scale(1.25)"><span class="tag top">Before</span></div>
+          <div class="ph checker zoom zr" tabindex="0"><img src="assets/w_bag_cutout.png" alt="Backpack cut out on a transparent background" style="object-fit:contain;transform:scale(1.6)"><span class="tag top">Cut out</span></div>
+          <div class="ph big"><img src="assets/w_bag_navy.jpg" alt="The same backpack, now navy blue" style="object-position:50% 52%"><span class="tag">"Make it navy blue"</span></div>
+        </div>
+      </div>
+
+      <div class="row flip">
+        <div class="row-text">
+          <h2>Remove anything, shadows included</h2>
+          <p>Brush over a person, a sign or a stray bag and it's gone, along with the shadow it cast. LumenAI checks its own work: if anything
+             is left behind, it quietly tries again before you ever see it. Want something there instead? <a class="inl" href="editor.html">Fill the space</a>
+             with whatever you describe.</p>
+        </div>
+        <div class="collage" aria-label="A visitor removed from a gallery photo, then a plant added">
+          <div class="ico-tile"><svg class="icon"><use href="#i-eraser"/></svg></div>
+          <div class="ph zoom zl" tabindex="0"><img src="assets/w_gallery_before.jpg" alt="Gallery with a visitor, before"><span class="tag top">Before</span></div>
+          <div class="ph zoom zr" tabindex="0"><img src="assets/w_gallery_plant.jpg" alt="The same spot filled with a potted plant"><span class="tag top">"Replace with a plant"</span></div>
+          <div class="ph big"><img src="assets/w_gallery_after.jpg" alt="Gallery with the visitor removed"><span class="tag">Person and shadow removed</span></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row-text">
+          <h2>Explore the full suite of AI tools</h2>
+          <p>Go beyond quick fixes. <a class="inl" href="editor.html">Remove backgrounds</a> in one click, <a class="inl" href="editor.html">expand the frame</a>
+             past the original edges, <a class="inl" href="editor.html">change someone's pose</a> while keeping them exactly who they are,
+             <a class="inl" href="editor.html">fix motion blur</a>, <a class="inl" href="editor.html">relight</a> a scene, or lift any object out of your photo and
+             <a class="inl" href="editor.html">turn it around in 3D</a>. Every tool lives in the same simple editor.</p>
+        </div>
+        <div class="collage side" aria-label="A seated person from a photo turned into a 3D model, shown from four sides">
+          <div class="ico-tile"><svg class="icon"><use href="#i-cube"/></svg></div>
+          <div class="ph tall views4">
+            <img src="assets/w_3d_0.jpg" alt="3D model, view 1"><img src="assets/w_3d_2.jpg" alt="3D model, view 2">
+            <img src="assets/w_3d_4.jpg" alt="3D model, view 3"><img src="assets/w_3d_6.jpg" alt="3D model, view 4">
+          </div>
+          <div class="ph sq"><img src="assets/w_pose_seated.jpg" alt="A person re-posed to sit cross-legged"></div>
+          <div class="chip">View in 3D</div>
+        </div>
+      </div>
+
+      <div class="row flip">
+        <div class="row-text">
+          <h2>Create an image from a single sentence</h2>
+          <p>No photo yet? Describe the picture you have in mind and LumenAI creates it, with considered light, composition and fine detail.
+             Choose <a class="inl" href="editor.html">Lumen 1.1 – Lumina</a> for a finished image in about two seconds, or Lumen 1.3 – Lux, which turns
+             a short idea into a richly detailed scene. Everything you create opens straight in the editor, ready for every other tool.</p>
+        </div>
+        <div class="collage" aria-label="From a one-line description to a finished image of the New York City skyline">
+          <div class="ico-tile"><svg class="icon"><use href="#i-sparkle"/></svg></div>
+          <div class="ph zoom zl prompt-tile" tabindex="0"><img src="assets/w_gen_prompt.png" alt="LumenAI creating an image from the words: a highly aesthetic view of the New York city skyline"><span class="tag top">Your words</span></div>
+          <div class="ph zoom zr" tabindex="0"><img src="assets/w_gen_detail.jpg" alt="Close-up of the generated skyline: glass towers and a lit spire"><span class="tag top">Fine detail</span></div>
+          <div class="ph big"><img src="assets/w_gen_city.jpg" alt="Generated image: New York City skyscrapers at golden hour on a wet street"><span class="tag">"A highly aesthetic view of the New York City skyline"</span></div>
+        </div>
+      </div>
+
+      <div class="stepper" id="stepper">
+        <h2 class="stepper-h">Made for whatever you're making</h2>
+        <div class="steps" role="tablist" aria-label="What you can make" aria-orientation="vertical">
+          <button class="step" role="tab" aria-selected="true" aria-controls="spCanvas" data-img="0">
+            <span class="num">1</span>
+            <span><span class="st-title">Social media visuals</span>
+              <span class="st-text">Posts and stories that stop the scroll. Change the light, restyle an outfit or try today's trending look.</span></span>
+            <span class="st-bar" aria-hidden="true"><i></i></span>
+          </button>
+          <button class="step" role="tab" aria-selected="false" aria-controls="spCanvas" data-img="1">
+            <span class="num">2</span>
+            <span><span class="st-title">Product photos</span>
+              <span class="st-text">Clean backgrounds, soft natural shadows and the colour you haven't shot yet, from a single photo.</span></span>
+            <span class="st-bar" aria-hidden="true"><i></i></span>
+          </button>
+          <button class="step" role="tab" aria-selected="false" aria-controls="spCanvas" data-img="2">
+            <span class="num">3</span>
+            <span><span class="st-title">Portraits</span>
+              <span class="st-text">New pose, softer light, a different outfit colour, and the person stays exactly who they are.</span></span>
+            <span class="st-bar" aria-hidden="true"><i></i></span>
+          </button>
+          <button class="step" role="tab" aria-selected="false" aria-controls="spCanvas" data-img="3">
+            <span class="num">4</span>
+            <span><span class="st-title">Creative edits</span>
+              <span class="st-text">Repaint it in an artist's style, turn day into night or see it from a brand-new angle.</span></span>
+            <span class="st-bar" aria-hidden="true"><i></i></span>
+          </button>
+        </div>
+        <div class="sp-stage">
+          <div class="sp-canvas" id="spCanvas" role="tabpanel" aria-live="polite">
+            <img class="sp-layer on" src="assets/c2_white_brown_model.jpg" alt="Woman in a white blazer at a café, social media style">
+            <img class="sp-layer" src="assets/hero_perfume.jpg" alt="Perfume bottle on warm stone, product photo">
+            <img class="sp-layer" src="assets/hero_woman.jpg" alt="Soft-light portrait of a woman">
+            <img class="sp-layer" src="assets/sq_side_car.jpg" alt="Green vintage car by a red brick wall, creative edit">
+            <span class="sp-chip"><svg class="icon"><use href="#i-sparkle"/></svg><span id="spChip">"Make it golden hour"</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------ all features -->
+  <section class="section all" id="features" aria-labelledby="af-h">
+    <h2 id="af-h">All the photo editing features you need</h2>
+    <p class="lede">Every tool you need to fix, change and create images, in one simple editor that does what you type.</p>
+    <div class="grid16">
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-chat"/></svg></div><div><h3>Edit with your words</h3><p>Type the change and LumenAI picks the right tool for it.</p></div></div>
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-sparkle"/></svg></div><div><h3>Create from text</h3><p>Turn one sentence into a finished picture, with three models to choose from.</p></div></div>
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-eraser"/></svg></div><div><h3>Object remover</h3><p>Erase people or objects, shadows included, with a seamless background.</p></div></div>
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-move"/></svg></div><div><h3>Move anything</h3><p>Drag an object to a new spot; the place it left is filled in naturally.</p></div></div>
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-brush"/></svg></div><div><h3>Brush and fill</h3><p>Paint over any area and describe what should be there.</p></div></div>
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-expand"/></svg></div><div><h3>Expand the frame</h3><p>Grow your photo past its edges with a natural continuation.</p></div></div>
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-palette"/></svg></div><div><h3>Recolour with a slider</h3><p>Change any colour and fine-tune the shade live.</p></div></div>
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-person"/></svg></div><div><h3>Change the pose</h3><p>Copy any pose from a photo while keeping the same person.</p></div></div>
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-sun"/></svg></div><div><h3>Relight</h3><p>Golden hour, neon night or soft studio light, with every detail kept.</p></div></div>
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-aperture"/></svg></div><div><h3>Portrait bokeh</h3><p>Real depth-aware background blur; click anywhere to refocus.</p></div></div>
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-wand"/></svg></div><div><h3>Styles</h3><p>Watercolour, anime, oil paint, or the style of any image you love.</p></div></div>
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-bag"/></svg></div><div><h3>Product shots</h3><p>Place your product in a new scene, keeping its shape, colour and logo exact.</p></div></div>
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-film"/></svg></div><div><h3>Dolly video</h3><p>Turn a still photo into a cinematic 3D camera move you can download.</p></div></div>
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-cube"/></svg></div><div><h3>View in 3D</h3><p>Lift any object out of your photo and turn it around in 3D.</p></div></div>
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-imgstar"/></svg></div><div><h3>AI upscale</h3><p>Up to four times larger, with real new detail.</p></div></div>
+      <div class="feat"><div class="sq-ico"><svg class="icon"><use href="#i-grid"/></svg></div><div><h3>Collage, cut-outs and trends</h3><p>Combine photos, remove backgrounds and try today's trending looks.</p></div></div>
+    </div>
+  </section>
+
+  <section class="section cta-band" aria-labelledby="cta-h" data-band="0">
+    <h2 id="cta-h">Your next favourite photo is one sentence away.</h2>
+    <a class="btn-olive" href="editor.html">Open editor <svg class="icon"><use href="#i-arrow"/></svg></a>
+  </section>
+
+  <!-- ------------------------------------------------------------ benchmarks -->
+  <section class="section bench" id="benchmarks" aria-labelledby="bm-h">
+    <button class="bench-link" id="benchOpen" type="button" aria-haspopup="dialog" aria-controls="benchCard"><span id="bm-h">See why LumenAI is perfect for you</span> <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+  </section>
+
+  <dialog class="bench-card" id="benchCard" aria-labelledby="bc-h">
+    <div class="bc-head">
+      <div><span class="bench-kicker">Benchmarks</span><h3 id="bc-h">Fast, light and accurate</h3>
+        <p>Every LumenAI model runs inside a 16 GB GPU budget. Peak GPU memory (VRAM) and execution time per image, measured on an NVIDIA L40S after warm-up, October 2026.</p></div>
+      <button class="bc-x" id="benchClose" type="button" aria-label="Close benchmarks"><svg class="icon"><use href="#i-close"/></svg></button>
+    </div>
+    <div class="bc-stats">
+      <div><b>1.1 s</b><span>to create a 1024 px image with Lumina</span></div>
+      <div><b>14.2 GB</b><span>highest peak VRAM of any tool, under the 16 GB budget</span></div>
+      <div><b>&lt; 1 GB</b><span>extra memory for the safety check, which reuses the editing model</span></div>
+    </div>
+    <div class="bc-table-wrap">
+      <table class="bc-table">
+        <thead><tr><th scope="col">Feature</th><th scope="col">Model</th><th scope="col" class="num">Peak VRAM <small>of 16 GB</small></th><th scope="col" class="num">Execution time</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Create an image</th><td>Lumen 1.1 – Lumina</td><td class="num"><span class="vb"><i style="width:83.8%"></i></span>13.4 GB</td><td class="num">1.1 s</td></tr>
+          <tr><th scope="row">Create an image</th><td>Lumen 1.3 – Lux</td><td class="num"><span class="vb"><i style="width:78.1%"></i></span>12.5 GB</td><td class="num">20.6 s</td></tr>
+          <tr><th scope="row">Edit with words</th><td>Lumen 1.1 – Lumina</td><td class="num"><span class="vb"><i style="width:83.8%"></i></span>13.4 GB</td><td class="num">1.7 s</td></tr>
+          <tr><th scope="row">Edit with words</th><td>Lumen 1.3 – Lux</td><td class="num"><span class="vb"><i style="width:86.2%"></i></span>13.8 GB</td><td class="num">35 s</td></tr>
+          <tr><th scope="row">Product shot</th><td>Lumen 1.3 – Lux</td><td class="num"><span class="vb"><i style="width:88.8%"></i></span>14.2 GB</td><td class="num">23.5 s</td></tr>
+          <tr><th scope="row">AI upscale ×4</th><td>LumenAI Upscaler</td><td class="num"><span class="vb"><i style="width:35.6%"></i></span>5.7 GB</td><td class="num">under 0.5 s</td></tr>
+          <tr><th scope="row">View in 3D</th><td>LumenAI 3D</td><td class="num"><span class="vb"><i style="width:71.9%"></i></span>11.5 GB</td><td class="num">54 s</td></tr>
+          <tr><th scope="row">Safety check</th><td>LumenAI Guard</td><td class="num"><span class="vb"><i style="width:5.0%"></i></span>0.8 GB</td><td class="num">2.3 s</td></tr>
+          <tr><th scope="row">Invisible watermark</th><td>LumenAI Mark</td><td class="num"><span class="vb"><i style="width:0.0%"></i></span>CPU only</td><td class="num">0.08 s</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h4>Better results than the alternatives we tested</h4>
+    <ul class="bc-wins">
+      <li><b>Object removal</b> 0.108 error (LPIPS, lower is better) vs 0.179 for MAT and 0.151 for LaMa</li>
+      <li><b>Pose changes</b> 59% of joints placed correctly and 10/10 same person, vs 36% and 2/10 for Leffa</li>
+      <li><b>Upscaling</b> 0.217 error vs 0.303 for standard resizing</li>
+      <li><b>Product shots</b> 0.90 product likeness vs 0.82 for FLUX.2 klein, which redraws logos</li>
+      <li><b>Watermark</b> still found in 99% of bits after JPEG compression, vs 53% for the basic method</li>
+      <li><b>Safety</b> blocks 19/20 harmful requests and 10/10 prompt injections with no normal edit refused, 5× faster than SingGuard-4B</li>
+    </ul>
+  </dialog>
+</main>
+
+<footer>
+  <span class="logo">LumenAI</span>
+  <span><a href="#features">Features</a> &nbsp;·&nbsp; <a href="#benchmarks">Benchmarks</a> &nbsp;·&nbsp; <a href="editor.html">Editor</a> &nbsp;·&nbsp; <a href="privacy.html">Privacy</a></span>
+</footer>
+
+<script>
+(() => {
+  const store = (k, v) => { try { sessionStorage.setItem(k, v); return true; } catch (e) { return false; } };
+  // benchmarks card
+  const bc = document.getElementById('benchCard');
+  document.getElementById('benchOpen').onclick = () => bc.showModal();
+  document.getElementById('benchClose').onclick = () => bc.close();
+  bc.addEventListener('click', e => { if (e.target === bc) bc.close(); });      // click outside the card closes it
+
+  // a fresh homepage starts with no photo chosen: "Open editor" without choosing one opens an empty editor
+  try { sessionStorage.removeItem('lumen.image'); sessionStorage.removeItem('lumen.imageName'); } catch (e) {}
+  const box = document.getElementById('dropbox'), zone = document.getElementById('dropzone');
+  const preview = document.getElementById('preview'), pImg = document.getElementById('previewImg'), pName = document.getElementById('previewName');
+  const file = document.getElementById('file');
+
+  function choose(src, name) {
+    pImg.src = src; pName.textContent = name || ''; preview.classList.add('on');
+    store('lumen.image', src); store('lumen.imageName', name || 'Photo');
+  }
+  document.getElementById('pick').onclick = () => file.click();
+  document.getElementById('clear').onclick = () => { preview.classList.remove('on'); pImg.removeAttribute('src'); try { sessionStorage.removeItem('lumen.image'); } catch (e) {} };
+  file.onchange = () => readFile(file.files[0]);
+  function readFile(f) {
+    if (!f || !f.type.startsWith('image/')) return;
+    const r = new FileReader();
+    // big phone photos would not fit in sessionStorage (about 5 MB): hand the editor a copy of at most 2048 px
+    r.onload = () => { const im = new Image(); im.onload = () => {
+        const s = Math.min(1, 2048 / Math.max(im.naturalWidth, im.naturalHeight));
+        if (s === 1 && r.result.length < 3.5e6) return choose(r.result, f.name);
+        const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * s); c.height = Math.round(im.naturalHeight * s);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        choose(c.toDataURL(f.type === 'image/png' ? 'image/png' : 'image/jpeg', .92), f.name); };
+      im.src = r.result; };
+    r.readAsDataURL(f);
+  }
+
+  // drag the floating photos (or a file from the computer) into the box
+  document.querySelectorAll('.float-card').forEach(c => {
+    c.addEventListener('dragstart', e => { e.dataTransfer.setData('text/lumen', JSON.stringify({ src: c.dataset.src, name: c.dataset.name })); e.dataTransfer.effectAllowed = 'copy'; });
+    c.addEventListener('dblclick', () => choose(c.dataset.src, c.dataset.name));
+    c.addEventListener('keydown', e => { if (e.key === 'Enter') choose(c.dataset.src, c.dataset.name); });
+    c.tabIndex = 0;
+  });
+  ['dragenter', 'dragover'].forEach(t => box.addEventListener(t, e => { e.preventDefault(); box.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => box.addEventListener(t, () => box.classList.remove('over')));
+  box.addEventListener('drop', e => {
+    e.preventDefault();
+    const d = e.dataTransfer.getData('text/lumen');
+    if (d) { const o = JSON.parse(d); choose(o.src, o.name); return; }
+    if (e.dataTransfer.files.length) readFile(e.dataTransfer.files[0]);
+  });
+
+  if (matchMedia('(pointer: coarse)').matches) document.getElementById('dragTip').textContent = 'Try it: tap any of these photos.';
+  // touch: tap a floating photo to load it
+  document.querySelectorAll('.float-card').forEach(c => c.addEventListener('touchend', () => choose(c.dataset.src, c.dataset.name), { passive: true }));
+
+  // carousel: tiles hand their image to the editor; mouse-drag to scroll; progress bar
+  const rail = document.getElementById('rail'), bar = document.getElementById('railBar');
+  rail.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () => { store('lumen.image', t.dataset.src); store('lumen.imageName', t.querySelector('img').alt); }));
+  let down = false, sx = 0, sl = 0, moved = false;
+  rail.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; down = true; moved = false; sx = e.clientX; sl = rail.scrollLeft; });
+  window.addEventListener('pointermove', e => { if (!down) return; const dx = e.clientX - sx; if (Math.abs(dx) > 4) { moved = true; rail.classList.add('dragging'); } rail.scrollLeft = sl - dx; });
+  window.addEventListener('pointerup', () => { if (!down) return; down = false; setTimeout(() => rail.classList.remove('dragging'), 0); });
+  rail.addEventListener('click', e => { if (moved) { e.preventDefault(); moved = false; } }, true);
+  const upd = () => { const max = rail.scrollWidth - rail.clientWidth; const vis = rail.clientWidth / rail.scrollWidth;
+    bar.style.width = (vis * 100) + '%'; bar.style.transform = `translateX(${max > 0 ? (rail.scrollLeft / max) * ((1 - vis) / vis) * 100 : 0}%)`; };
+  rail.addEventListener('scroll', upd, { passive: true }); window.addEventListener('resize', upd); upd();
+
+  // ---------------------------------------------------------------- stepper ("breathing" showcase)
+  (() => {
+    const root = document.getElementById('stepper'), steps = [...root.querySelectorAll('.step')];
+    const canvas = document.getElementById('spCanvas'), layers = [...canvas.querySelectorAll('.sp-layer')], chip = document.getElementById('spChip');
+    const CHIPS = ['"Make it golden hour"', '"Put it on warm stone"', '"Soft window light"', '"Paint it like a travel poster"'];
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let cur = 0, timer = null, hover = false, clickHold = null, visible = false;
+    function go(i) {
+      if (i === cur) return;
+      cur = i;
+      steps.forEach((s, k) => { s.setAttribute('aria-selected', k === i); s.tabIndex = k === i ? 0 : -1; });
+      layers.forEach((l, k) => l.classList.toggle('on', k === i));
+      chip.parentElement.classList.add('swap');
+      setTimeout(() => { chip.textContent = CHIPS[i]; chip.parentElement.classList.remove('swap'); }, 260);
+      canvas.classList.remove('breathe'); void canvas.offsetWidth; canvas.classList.add('breathe');
+      restartBar();
+    }
+    function restartBar() { root.classList.remove('playing'); void root.offsetWidth; if (running()) root.classList.add('playing'); }
+    const running = () => !still && visible && !hover && !clickHold;
+    function schedule() { clearInterval(timer); timer = null; if (running()) timer = setInterval(() => go((cur + 1) % steps.length), 4000); restartBar(); }
+    steps.forEach((s, k) => {
+      s.addEventListener('mouseenter', () => { hover = true; go(k); schedule(); });
+      s.addEventListener('click', () => { go(k); clearTimeout(clickHold); clickHold = setTimeout(() => { clickHold = null; schedule(); }, 10000); schedule(); });
+      s.addEventListener('keydown', e => { const d = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+        if (d) { e.preventDefault(); const n = (cur + d + steps.length) % steps.length; go(n); steps[n].focus(); clickHold = clickHold || setTimeout(() => { clickHold = null; schedule(); }, 10000); schedule(); } });
+    });
+    root.querySelector('.steps').addEventListener('mouseleave', () => { hover = false; schedule(); });
+    new IntersectionObserver(es => { visible = es[0].isIntersecting; schedule(); }, { threshold: .35 }).observe(root);
+    steps.forEach((s, k) => s.tabIndex = k === 0 ? 0 : -1);
+  })();
+
+
+  // ---------------------------------------------------------------- continuous olive landscape
+  // One left and one right "shore" drawn as smooth curves through the full page height, anchored to the real
+  // section positions, so the olive shapes and contour lines flow from the hero to the footer without breaks.
+  const svg = document.getElementById('landscape');
+  function smooth(pts) {            // Catmull-Rom -> cubic Bezier through [x, y] points
+    let d = '';
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+      const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+      d += ` C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+    }
+    return d;
+  }
+  function draw() {
+    const W = document.documentElement.clientWidth, H = document.body.scrollHeight;
+    const top = el => el.getBoundingClientRect().top + scrollY;
+    const hero = document.querySelector('.hero'), hH = hero.offsetHeight;
+    const secs = [...document.querySelectorAll('main > .section')].map(el => [top(el), el.offsetHeight, +(el.dataset.band || 1)]);
+    const foot = top(document.querySelector('footer'));
+    const narrow = W < 820;
+    const k = narrow ? W / 1440 * .7 : Math.min(1.15, W / 1440);   // shapes scale with the window (slim on phones)
+    const side = narrow ? 0 : Math.max(0, (W - 1240) / 2 - 50);   // free margin beside the content, minus room for the contour lines
+    const band = (a, b) => Math.min(side, (a + b) / 2);           // a bulge that stays inside the margin
+    // left shore: [width, y]
+    const L = [[0, 0], [0, hH * .55], [130 * k, hH * .8], [190 * k, hH - 40], [60 * k, hH + 110], [narrow ? 0 : 22, hH + 260]];
+    const R = [[250 * k, 0], [215 * k, 150], [70 * k, 330], [0, hH * .45], [40 * k, hH * .72], [170 * k, hH - 50], [50 * k, hH + 110], [narrow ? 0 : 18, hH + 280]];
+    secs.forEach(([t, h, f], i) => {
+      if (t < hH + 320 || f === 0) return;
+      const mid = t + h / 2;
+      const peak = Math.min(side, side * f), soft = Math.min(30, peak);
+      if (i % 2) { L.push([soft, t + h * .25], [peak, mid], [Math.min(20, peak), t + h * .8]); R.push([Math.min(25, side), mid]); }
+      else       { R.push([soft, t + h * .25], [peak, mid], [Math.min(20, peak), t + h * .8]); L.push([Math.min(25, side), mid]); }
+    });
+    L.push([narrow ? 0 : 22, foot - 40], [100 * k, H]);
+    R.push([narrow ? 0 : 18, foot - 40], [80 * k, H]);
+    if (narrow) {   // phones have no spare margin: keep only corner accents (top right, both bottom corners)
+      L.length = 0; R.length = 0;
+      L.push([0, 0], [0, H - 220], [70, H]);
+      R.push([0, 0], [0, H - 180], [50, H]);
+    }
+    const sortY = a => a.sort((p, q) => p[1] - q[1]);
+    const left = sortY(L).map(([w, y]) => [w, y]), right = sortY(R).map(([w, y]) => [W - w, y]);
+    const fillPath = (pts, edgeX) => `M${edgeX},0 L${pts[0][0]},${pts[0][1]}` + smooth(pts) + ` L${edgeX},${H} Z`;
+    const line = (pts, dx) => { const q = pts.map(([x, y]) => [x + dx, y]); return `M${q[0][0]},${q[0][1]}` + smooth(q); };
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.style.height = H + 'px';
+    svg.innerHTML =
+      `<path class="land" d="${fillPath(left, 0)}"/><path class="land" d="${fillPath(right, W)}"/>` +
+      (narrow ? `<circle class="land" cx="${W + 6}" cy="-6" r="118"/><circle class="contour" cx="${W + 6}" cy="-6" r="140"/>` : `<path class="contour" d="${line(left, 20)}"/><path class="contour soft" d="${line(left, 38)}"/>` +
+                     `<path class="contour" d="${line(right, -20)}"/><path class="contour soft" d="${line(right, -38)}"/>`);
+  }
+  let raf = 0; const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); };
+  draw(); addEventListener('resize', redraw); addEventListener('load', redraw);
+  if (document.fonts) document.fonts.ready.then(redraw);
+  new ResizeObserver(redraw).observe(document.body);
+
+
+  // ---------------------------------------------------------------- dotted arrows: photo -> box
+  const arrows = document.getElementById('arrows'), stage = document.querySelector('.stage');
+  function drawArrows() {
+    if (innerWidth <= 820) { arrows.innerHTML = ''; return; }
+    const S = stage.getBoundingClientRect(), B = document.getElementById('dropbox').getBoundingClientRect();
+    const rel = r => ({ l: r.left - S.left, r: r.right - S.left, t: r.top - S.top, b: r.bottom - S.top, cx: (r.left + r.right) / 2 - S.left, cy: (r.top + r.bottom) / 2 - S.top });
+    const box = rel(B);
+    let out = '';
+    document.querySelectorAll('.float-card').forEach((c, i) => {
+      const r = rel(c.getBoundingClientRect()), left = r.cx < box.cx;
+      // traced from the sketch: leave the photo's inner edge, a gentle hump, (right side: a dip), then into the box
+      const sg = left ? 1 : -1, cw = r.r - r.l, ch = r.b - r.t;
+      const sx = left ? r.r + 22 : r.l - 22;
+      const sy = i === 0 ? r.cy - ch * .12 : i === 1 ? r.cy - ch * .2 : r.t + ch * .3;
+      const ex = left ? box.l - 22 : box.r + 22;
+      const ey = i === 0 ? box.t + (box.b - box.t) * .3 : i === 1 ? box.t + (box.b - box.t) * .2 : box.b - (box.b - box.t) * .2;
+      const dx = ex - sx, span = Math.abs(dx);
+      const hump = Math.min(70, Math.max(26, span * .16));
+      let pts;
+      if (span >= 130) {                                    // room for the sketched shape
+        pts = [[sx, sy], [sx + dx * .32, Math.min(sy, ey) - hump]];
+        if (i === 0) pts.push([sx + dx * .72, ey - hump * .15]);
+        else pts.push([sx + dx * .74, Math.max(sy, ey) + (i === 1 ? hump * .55 : hump * .7)]);
+        pts.push([ex, ey]);
+      } else if (i === 2) {                                 // narrow gap: the two right-hand arrows would cross - keep one per side
+        return;
+      } else {                                              // narrow gap: one clean arc from the top of the photo
+        const clampY = y => Math.max(box.t + 30, Math.min(box.b - 30, y)), bx = left ? box.l - 16 : box.r + 16;
+        if (i === 1) {                                      // interior: from its bottom corner, dip down and in
+          const ax = r.l + cw * .28, ay = r.b + 10, by = clampY(r.b + 34);
+          pts = [[ax, ay], [(ax + bx) / 2, Math.max(ay, by) + 34], [bx, by]];
+        } else {                                            // perfume / portrait: from the top corner, arc over and in
+          const ax = r.cx + sg * cw * .22, ay = r.t - 10, by = clampY(i === 0 ? box.t + 46 : r.t - 20);
+          pts = [[ax, ay], [(ax + bx) / 2, Math.min(ay, by) - 40], [bx, by]];
+        }
+      }
+      const d = `M${pts[0][0]},${pts[0][1]}` + smooth(pts);
+      const n = pts.length, c2 = [pts[n - 1][0] - (pts[n - 1][0] - pts[n - 2][0]) / 6, pts[n - 1][1] - (pts[n - 1][1] - pts[n - 2][1]) / 6];
+      const [tx, ty] = pts[n - 1];
+      const ang = Math.atan2(ty - c2[1], tx - c2[0]), a = 13, w = .5;           // arrowhead along the path's end direction
+      const h1 = [tx - a * Math.cos(ang - w), ty - a * Math.sin(ang - w)], h2 = [tx - a * Math.cos(ang + w), ty - a * Math.sin(ang + w)];
+      out += `<path class="trail" d="${d}"/><path class="head" d="M${h1[0]},${h1[1]} L${tx},${ty} L${h2[0]},${h2[1]}"/>`;
+    });
+    arrows.innerHTML = out;
+  }
+  drawArrows(); addEventListener('resize', drawArrows); addEventListener('load', drawArrows);
+  if (document.fonts) document.fonts.ready.then(drawArrows);
+
+  // share: copy the link
+  document.getElementById('share').onclick = async e => {
+    try { await navigator.clipboard.writeText(location.href); e.currentTarget.title = 'Link copied'; } catch (err) {}
+  };
+})();
+</script>
+</body>
+</html>
