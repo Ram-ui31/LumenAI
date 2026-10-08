@@ -1,6 +1,7 @@
 # Benchmarks
 
-All numbers were measured on one NVIDIA L40S, after a warm-up run, in October 2026. "Peak GB" is the peak GPU memory
+All numbers were measured on one NVIDIA L40S, after a warm-up run, in October 2026, unless a row names another GPU.
+The deployed system now runs the API and Lumina on an H100, so these times are conservative. "Peak GB" is the peak GPU memory
 allocated while the model ran (PyTorch allocator). Every model LumenAI ships stays inside a **16 GB** budget.
 
 Reproduce: `cd backend && modal run --detach modal_benchmark.py` (logic in `benchmarks/run_v9.py`; third-party models in
@@ -14,9 +15,12 @@ Reproduce: `cd backend && modal run --detach modal_benchmark.py` (logic in `benc
 | Create an image (1024 px) | Lumen 1.3 – Lux (Qwen-Image 2.1, 40 steps) | 12.5 GB | 20.6 s |
 | Edit with words | Lumen 1.1 – Lumina | 13.4 GB | 1.7 s |
 | Edit with words | Lumen 1.3 – Lux | 13.8 GB | 35 s |
-| Product shot | Qwen-Image 2.1 | 14.2 GB | 23.5 s |
+| Product shot, scene mode (API only) | Qwen-Image 2.1 | 14.2 GB | 23.5 s |
+| Style (shipped) | Magenta, TensorFlow Hub | 1.3 GB | 0.04 s |
 | AI upscale ×4 | TADSR | 5.7 GB | < 0.5 s |
-| View in 3D | Hunyuan3D-2 | 11.5 GB | 54 s |
+| View in 3D (default) | SPAR3D (L4, first request incl. background removal, 2026-10-08) | 11.0 GB | 29 s |
+| View in 3D (fast option) | Stable Fast 3D (T4, first request incl. background removal, 2026-10-07) | 11.0 GB | 34 s |
+| View in 3D (earlier) | Hunyuan3D-2 (L40S) | 11.5 GB | 54 s |
 | Safety check | Qwen3-VL (shared) + DeBERTa-v3 injection classifier | +0.8 GB | 2.3 s |
 | Invisible watermark | dwtDctSvd | CPU | 0.08 s |
 
@@ -35,11 +39,20 @@ Lumen 1.1 – Lumina loading options (`modal run modal_flash.py`):
 | Object removal (RORD) | LPIPS in the hole ↓ | **0.108** | LaMa 0.151 · MAT 0.179 · Segformer + LaMa 0.149 |
 | Pose transfer (10 pairs) | PCK@0.2 ↑ / same person | **0.59 / 10 of 10** | Leffa 0.36 / 2 of 10 |
 | Upscale ×4 (16 photos) | LPIPS ↓ | **0.217** (TADSR) | Lanczos 0.303 · Qwen refine 0.290 |
-| Product shot (24 cases) | DINOv2 product similarity ↑ | **0.900** | FLUX.2 klein 0.815 |
+| Product shot, scene mode (24 cases) | DINOv2 product similarity ↑ | **0.900** (Qwen-Image) | FLUX.2 klein 0.815 |
+| Style transfer (12 photos × 4 artworks) | content kept (DINOv2) ↑ / texture match (Gram loss, log₁₀) ↓ | Magenta 0.44 / **0.87** | FLUX.2 klein (85 %) **0.81** / 1.25 |
 | Text to image (20 prompts) | judge score: prompt / quality | 9.7 / 9.8 (Lux) | klein 9.7 / 9.7 · Z-Image 9.6 / 9.6 |
 | Instruction edits (GEdit-Bench, 33) | overall ↑ | 7.36 (Qwen) · **7.80 (Lumina)** | InstructPix2Pix 2.91 |
 | Watermark after JPEG-75 | bit accuracy ↑ | **0.99** (dwtDctSvd) | dwtDct 0.53 |
 | Safety (60 requests) | harmful blocked / injections blocked / false blocks | 19 of 20 / 10 of 10 / 0 | SingGuard-4B 19/20, 8/10, 0 at 12.6 s and 9.1 GB |
 
+Style: Magenta matches the artwork's texture far more closely and is about 80× faster; klein keeps more of the photo.
+The editor uses Magenta (`modal run modal_benchmark_style.py` reproduces the comparison).
+
+3-D: SPAR3D replaced the single-pass SF3D as the default because SF3D made objects photographed head-on thin; both
+replaced Hunyuan3D-2.
+
 Not adopted: Qwen-Image-Edit-2511 + Multiple-Angles LoRA (best camera-angle scores, but 42.5 GB and 140 s per image),
-Z-Image-Turbo (slower than klein for the same quality), FLUX.1-dev and SF3D (gated).
+Z-Image-Turbo (slower than klein for the same quality) and FLUX.1-dev.
+
+The technical report ([LumenAI_Technical_Report.pdf](LumenAI_Technical_Report.pdf)) describes every metric and test set.

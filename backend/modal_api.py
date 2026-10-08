@@ -14,14 +14,14 @@ import modal
 
 HERE = Path(__file__).resolve().parent
 REMOTE = "/root/adobe-ps"
-GPU = os.environ.get("MODAL_GPU", "L40S")
+GPU = os.environ.get("MODAL_GPU", "H100")
 DIFFUSERS = "git+https://github.com/huggingface/diffusers@578c9b2c6636ab2424a0e56186268b83623656b2"
 IGNORE = [".venv", ".venv/**", ".cache", ".cache/**", ".hf_cache", ".hf_cache/**", "outputs", "outputs/**", "**/__pycache__/**", ".env"]
 ENV = {"HF_HOME": "/vol/hf", "TORCH_HOME": "/vol/torch", "ADOBEPS_DEVICE": "cuda", "PYTHONUNBUFFERED": "1"}
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
-    .apt_install("git", "libgl1", "libglib2.0-0")
+    .apt_install("git", "libgl1", "libglib2.0-0", "fonts-dejavu-core")
     .pip_install_from_requirements(str(HERE / "requirements.txt"))
     .pip_install(DIFFUSERS, "transformers>=5.17", "accelerate>=1.0", "bitsandbytes>=0.45")
     .pip_install("peft>=0.17", "trimesh", "git+https://github.com/microsoft/MoGe.git")

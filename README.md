@@ -5,12 +5,17 @@
 runs inside a 16 GB GPU budget.
 
 - **Edit with words**, or select by clicking, dragging a box or painting with a brush
-- **Remove, move, recolour, expand, add objects**, change a person's **pose**, **relight**, **restyle**
-- **Create images** with three models: Lumen 1.1 – Lumina (≈2 s), 1.2 – Kroma (≈12 s), 1.3 – Lux (best detail)
-- **Portrait bokeh**, **dolly video**, **product shots**, **AI upscale ×4**, **view any object in 3D**, collage
-- **Trends**: today's popular looks (Gemini + Google Search) as one-click edits
+- **Remove, move, recolour, expand** (preset or any ratio), add objects by prompt, change a person's **pose**, **relight**, **restyle**
+- **Create images** with three models: Lumen 1.1 – Lumina (FLUX.2 klein), 1.2 – Kroma (Qwen-Image), 1.3 – Lux (Qwen-Image with prompt rewriting, best detail)
+- **Portrait bokeh**, **glow light** (a depth-aware light that reveals dark scenes; a live preview follows the cursor), **dolly video**
+- **Product shots** from **4 angles** (FLUX.2 klein), **AI upscale ×4**, **view any object in 3D** (SPAR3D or SF3D), put a new angle of it back into the photo and rotate or resize it
+- **Styles** from 27 classic artworks or your own reference (Magenta, TensorFlow Hub); **IC-Light** relighting
+- **Up to 10 reference photos** per edit, brush selection that snaps to the object (SAM), collage and **AI auto-collage**
+- **Suggestions**: the AI looks at the objects in your photo and proposes what to remove, add, replace or move, one tap to try
 - Request guard against harmful prompts and prompt injection; invisible watermark on every export
 
+**Technical report:** [docs/LumenAI_Technical_Report.pdf](docs/LumenAI_Technical_Report.pdf) (23 pages: architecture,
+routing, every pipeline with its mathematics, the recolour slider, benchmarks and limitations).
 Measured speed, memory and quality: [docs/BENCHMARKS.md](docs/BENCHMARKS.md). How it fits together:
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -24,20 +29,22 @@ LumenAI/
 │   ├── index.html             landing page
 │   ├── editor.html            the editor
 │   ├── config.js              ← the API URL the editor talks to
-│   └── assets/
+│   └── assets/                images; artworks.zip = the 27 style thumbnails (unzip in place)
 ├── backend/                   Python 3.11 API (FastAPI) and the Modal apps
-│   ├── server/                web API: routes, tools, guard, trends, watermark, local runner
+│   ├── server/                web API: routes, tools, guard, suggestions, watermark, local runner
 │   ├── editing/               editing pipelines (Qwen wrapper, removal, recolour, pose, relight, 3-D, ...)
 │   ├── core/  generation/  critics/  vlm/   shared helpers, generation backends, quality critics, VLM client
 │   ├── benchmarks/            benchmark runners and metrics
 │   ├── tests/                 offline test suite (no GPU, no downloads)
 │   ├── scripts/demo_server.py the whole API with a stand-in engine (try the UI without a GPU)
 │   ├── modal_api.py           main API app             modal_flash.py    Lumen 1.1 – Lumina (FLUX.2 klein)
-│   ├── modal_tadsr.py         AI upscaler              modal_object3d.py Hunyuan3D-2 (View in 3D)
+│   ├── modal_tadsr.py         AI upscaler              modal_object3d.py SPAR3D + SF3D (View in 3D)
+│   ├── modal_iclight.py       IC-Light relighting      modal_magenta.py  Magenta styles (TensorFlow)
 │   ├── modal_benchmark*.py    benchmark runs on Modal
 │   ├── config.yaml            defaults
 │   └── requirements*.txt
-└── docs/                      architecture and benchmarks
+├── docs/                      ARCHITECTURE.md, BENCHMARKS.md, LumenAI_Technical_Report.pdf
+└── vercel.json                publishes frontend/ as a static site
 ```
 
 ---
@@ -49,9 +56,12 @@ LumenAI/
 The demo server runs the real API routes with a stand-in engine, so every tool answers instantly with a placeholder
 result. Good for UI work and a first look.
 
+The 27 artwork thumbnails used by the Style tool ship as a zip; unpack them once after cloning:
+
 ```bash
 git clone https://github.com/Ram-ui31/LumenAI.git
-cd LumenAI/backend
+cd LumenAI/frontend/assets && unzip artworks.zip && cd ../..
+cd backend
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 python scripts/demo_server.py
@@ -87,13 +97,6 @@ read -s HF_TOKEN
 modal secret create adobe-ps-hf HF_TOKEN="$HF_TOKEN"
 ```
 
-Optional, for the Trends tool (a key from Google AI Studio):
-
-```bash
-read -s GEMINI_API_KEY
-modal secret create adobe-ps-trends GEMINI_API_KEY="$GEMINI_API_KEY"
-```
-
 **Deploy**
 
 ```bash
@@ -101,11 +104,12 @@ modal deploy modal_api.py
 modal deploy modal_flash.py
 modal deploy modal_tadsr.py
 modal deploy modal_object3d.py
+modal deploy modal_iclight.py
+modal deploy modal_magenta.py
 ```
 
-`modal_api.py` is required; the other three add Lumen 1.1 – Lumina, the AI upscaler and View in 3D (the editor tells
-you if one is missing). The first deploy builds the container images (5–20 minutes, `modal_object3d.py` is the
-longest); later deploys take seconds.
+`modal_api.py` is required; the others add Lumen 1.1 – Lumina (also product angles), the AI upscaler, View in 3D, IC-Light relighting and
+Magenta styles (the editor tells you if one is missing). The first deploy builds the container images (5–20 minutes); later deploys take seconds.
 
 **Point the editor at your API.** `modal deploy modal_api.py` prints a URL like
 `https://<workspace>--adobe-ps-api-studio-web.modal.run`. Put it, followed by `/api/v1`, in `frontend/config.js`:
@@ -123,6 +127,10 @@ python3 -m http.server 3001
 
 Open http://localhost:3001. The first request wakes the GPU and loads the models (1–3 minutes; the editor shows
 "Waking the AI"). After 10 idle minutes the GPU shuts down again, so an idle deployment costs nothing.
+
+**Put the website online (Vercel).** Only `frontend/` is hosted; all Python and AI stay on Modal. In Vercel, import
+this repository and keep the defaults: `vercel.json` publishes `frontend/`, unzips the artwork thumbnails during the
+build and skips `backend/`. `frontend/config.js` must hold your Modal API URL before you deploy.
 
 ### 3. Run the API on your own GPU
 
@@ -148,7 +156,7 @@ cd LumenAI/backend
 python -m pytest -q
 ```
 
-The suite runs offline with stand-in models (about 130 tests, a minute or two).
+The suite runs offline with stand-in models (135 tests, under a minute).
 
 ## Benchmarks
 
@@ -169,7 +177,7 @@ in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 | Diffusion steps (Lux / Kroma) | `ADOBEPS_API_STEPS` / `ADOBEPS_QUICK_STEPS` | 40 / 16 |
 | Largest side processed | `ADOBEPS_API_MAX_SIDE` | 2048 |
 | Lumina loading mode | `FLASH_MODE` when deploying `modal_flash.py`: `nf4te` or `offload` | `nf4te` |
-| GPU type on Modal | `MODAL_GPU` when deploying | `L40S` |
+| GPU type on Modal | `MODAL_GPU` (API, Lumina, upscaler), `MODAL_GPU_3D`, `MODAL_GPU_SPAR3D`, `STUDIO_GPU` (IC-Light), `MODAL_GPU_MAGENTA` | H100 for the API and Lumina, L40S for 3D, IC-Light and the upscaler, L4 for Magenta |
 | Watermark on/off | `ADOBEPS_WATERMARK` | on |
 | No models (tests, demo) | `ADOBEPS_BACKEND=stub` | — |
 
@@ -183,9 +191,9 @@ in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 | Depth (bokeh, dolly) | Depth Anything V2 Small | Apache-2.0 |
 | Pose joints | OpenPose (controlnet-aux annotators) | see model card |
 | Upscaling | [TADSR](https://huggingface.co/zty557/TADSR) | academic use only |
-| 3-D | [Hunyuan3D-2](https://huggingface.co/tencent/Hunyuan3D-2) | Tencent Hunyuan community licence |
+| 3-D | [SPAR3D](https://huggingface.co/stabilityai/stable-point-aware-3d) (default) and [Stable Fast 3D](https://huggingface.co/stabilityai/stable-fast-3d) (both gated: accept the licences with your HF account) | Stability AI Community licence |
+| Fast style | Magenta arbitrary image stylisation (TensorFlow Hub) | Apache-2.0 |
 | Prompt-injection guard | deberta-v3-base-prompt-injection-v2 | Apache-2.0 |
 | Expand | Qwen-Image Outpaint LoRA (community) | see model card |
-| Trends | Google Gemini API | Google API terms |
 
 Check each model card before any commercial use.

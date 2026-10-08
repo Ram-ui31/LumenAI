@@ -1,17 +1,19 @@
 # Architecture
 
 ```
- Browser (frontend/)                         Modal (backend/)
+ Browser (frontend/, e.g. on Vercel)          Modal (backend/)
  ┌──────────────────────┐   JSON + images   ┌────────────────────────────────────────────────────────────┐
- │ index.html  landing  │   as data URLs    │ adobe-ps-api  (modal_api.py, one GPU)                      │
+ │ index.html  landing  │   as data URLs    │ adobe-ps-api  (modal_api.py, H100)                         │
  │ editor.html editor   │ ───────────────▶  │   FastAPI  server/web_api.py + server/extras.py            │
  │  · tools, history    │                   │   request guard (server/guard.py) → router → tool          │
  │  · selection, brush  │ ◀───────────────  │   Engine: Qwen-Image 2.1 (nf4) + Qwen3-VL + SAM 2.1        │
- │  · dolly renderer    │   result + time   │           Depth Anything V2 Small · OpenPose · watermark   │
- │    (three.js)        │   + peak VRAM     │                                                            │
- └──────────────────────┘                   │   calls ──▶ adobe-ps-flash    FLUX.2 klein 4B (Lumina)     │
-                                            │         ──▶ adobe-ps-tadsr    TADSR upscaler               │
-                                            │         ──▶ adobe-ps-object3d Hunyuan3D-2                  │
+ │  · glow preview      │   result + time   │           Depth Anything V2 Small · OpenPose · watermark   │
+ │    (WebGL), dolly,   │   + peak VRAM     │                                                            │
+ │    3-D viewer        │                   │   calls ──▶ adobe-ps-flash    FLUX.2 klein 4B (H100)       │
+ │    (three.js)        │                   │         ──▶ adobe-ps-object3d SPAR3D / SF3D (L40S)         │
+ └──────────────────────┘                   │         ──▶ lumen-iclight     IC-Light, SD 1.5 (L40S)      │
+                                            │         ──▶ lumen-magenta     Magenta, TensorFlow (L4)     │
+                                            │         ──▶ adobe-ps-tadsr    TADSR upscaler (L40S)        │
                                             │   Volume adobe-ps-data: model weights + run outputs        │
                                             └────────────────────────────────────────────────────────────┘
 ```
@@ -19,35 +21,38 @@
 ## Why several containers
 
 The 16 GB budget is per model. Qwen-Image 2.1 with its Qwen3-VL text encoder already peaks at about 14 GB, so models
-with their own large weights (FLUX.2 klein, Hunyuan3D-2) or incompatible dependencies (TADSR pins torch 2.0) each run in
-their own Modal app and are called with `modal.Cls.from_name(...)`. Idle containers scale to zero.
+with their own large weights (FLUX.2 klein, SPAR3D / SF3D) or incompatible dependencies (TADSR pins torch 2.0,
+IC-Light needs its own diffusers stack, Magenta needs TensorFlow) each run in their own Modal app and are called with
+`modal.Cls.from_name(...)`. Idle containers scale to zero. The GPU of each app can be changed at deploy time (see the
+main README); the defaults are an H100 for the API and Lumina, an L40S for 3-D, IC-Light and the upscaler and an L4 for
+Magenta. The website itself is static and can be hosted anywhere (`vercel.json` publishes `frontend/`).
 
 ## One engine, many tools
 
 `server/web_api.py: Engine` holds the shared pipeline. Qwen-Image 2.1 does generation, instruction edits, outpainting
 (with the Outpaint LoRA) and object insertion; its text encoder is a full Qwen3-VL, which is reused as the
-vision-language model for grounding ("where is the backpack?"), ideas, pose descriptions, prompt rewriting and the
+vision-language model for grounding ("where is the backpack?"), photo-specific suggestions, pose descriptions, prompt rewriting and the
 safety policy check. That reuse is why the guard costs no extra GPU memory.
 
 | Tool (endpoint) | Pipeline |
 |---|---|
-| Edit with words (`/edit`) | guard → router: remove / recolour / pose / style / deblur / general edit (masked edits crop around the selection and blend back with a Laplacian pyramid) |
+| Edit with words (`/edit`) | up to 10 reference images ("image 1 … image 10"); guard → router: remove / recolour / pose / style / deblur / general edit (masked edits crop around the selection and blend back with a Laplacian pyramid) |
 | Generate (`/generate`) | Lumina: FLUX.2 klein · Kroma: Qwen 16 steps · Lux: Qwen3-VL rewrites the prompt, Qwen 40 steps |
 | Select (`/segment`) | SAM 2.1 from clicks or a box (nothing outside the box is kept) |
 | Remove | Qwen3-VL reads the selection → draft at 512 px → sharpen at 768 px → self-check with up to 3 fallbacks → shadow removal → seam blend |
 | Move (`/move`) | lift the object, fill the hole with Remove, put it down at the new place and size |
 | Recolour (`/recolour`, `/recolour-shade`) | OKLab recolour that keeps the shading; the slider re-renders from a cached mask |
-| Expand (`/expand`) | Qwen + Outpaint LoRA, 10 steps |
-| Add object (`/ideas`, `/place`, `/add`) | Qwen3-VL ideas → spot and realistic size → "ghost" fill |
+| Expand (`/expand`) | Qwen + Outpaint LoRA, 10 steps; preset ratios, any ratio from 1:4 to 4:1, or grow every side by 5–100 % |
+| Suggestions (`/suggest`) | Qwen3-VL lists the objects and their roles, then proposes remove / add / replace / move / recolour edits that run through `/edit` |
 | Pose (`/pose`) | OpenPose joints + Qwen3-VL description → words-only edit with up to 2 correction rounds (Qwen never sees the reference photo, so it cannot copy it) |
-| Style (`/style`) | reference style described in words, or a preset |
-| Relight (`/relight`) | Qwen relight, then light transfer: new low-frequency light, original high-frequency detail |
+| Style (`/style`) | Magenta arbitrary image stylisation (TensorFlow Hub, own container) from one of 27 artworks or a reference photo |
+| Relight (`/relight`) | Qwen relight, then light transfer (new low-frequency light, original high-frequency detail); or IC-Light (SD 1.5, own container) with the same detail transfer |
 | Bokeh (`/bokeh`, `/bokeh-adjust`) | Depth Anything V2 Small + subject mask → layered disc blur in linear light; depth is cached so the slider and refocus run on the CPU |
 | Dolly video (`/layers`) | subject cut-out + filled background plate + depth; the browser renders the camera move with three.js and records it |
-| Product shot (`/product`) | Qwen-Image 2.1 (keeps logos; klein redraws them) |
+| Product shot (`/product-angles`) | FLUX.2 klein: 45°, side, back and top views of the product |
 | Upscale (`/upscale-ai`) | TADSR ×4 (×2 = ×4 then resize) |
-| View in 3D (`/view3d`) | cut-out → Qwen completes hidden parts → Hunyuan3D-2 textured mesh (GLB) |
-| Trends (`/trends`) | Gemini with Google Search grounding → ready-to-run edit prompts |
+| View in 3D (`/view3d`, `/replace-object`) | cut-out → Qwen completes hidden parts → SPAR3D (default) or Stable Fast 3D mesh (GLB); a captured view can replace the object and be rotated or resized in the browser |
+| Glow light (`/glow`, `/glow-adjust`) | Depth Anything V2 normals + exposure-style light with automatic exposure; a WebGL preview follows the cursor |
 | Export (`/export`) | invisible dwtDctSvd watermark ("LUMN"), checked by `/verify` |
 
 ## Seeds and repeatability
@@ -64,3 +69,8 @@ the model reproduce the original instead of applying the edit).
 - TF32 matmuls; VAE tiling stays off (it changed what the model saw and hurt removals).
 - Klein's 8 GB text encoder is loaded in 4-bit: 18.6 → 13.35 GB at the same speed.
 - Every response reports `seconds` and `peak_gb`; the editor shows both in its "Last run" card.
+
+## Further reading
+
+The full design, the mathematics of each pipeline (recolour slider, glow light, bokeh, dolly video) and every benchmark
+are in the technical report: [LumenAI_Technical_Report.pdf](LumenAI_Technical_Report.pdf).

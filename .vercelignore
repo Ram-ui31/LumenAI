@@ -1,0 +1,4 @@
+backend/
+docs/
+*.md
+!README.md

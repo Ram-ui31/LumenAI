@@ -61,7 +61,12 @@ class Slow(Fake):
         cx = np.abs(np.linspace(-1, 1, w, dtype=np.float32))[None, :]
         return np.clip(0.25 + 0.55 * y * (1 - 0.6 * cx) + 0.1 * a, 0, 1)
 
-    def make3d(self, rgba):
+    def magenta(self, image, style):
+        """Stand-in for the Magenta app: tint the photo with the artwork's average colour."""
+        a = np.asarray(image.convert("RGB"), np.float32); c = np.asarray(style.convert("RGB"), np.float32).mean((0, 1))
+        return Image.fromarray((a * 0.6 + c * 0.4).clip(0, 255).astype(np.uint8))
+
+    def make3d(self, rgba, engine="spar3d"):
         import trimesh
 
         time.sleep(1)

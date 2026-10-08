@@ -21,3 +21,10 @@ backend/outputs/*
 .DS_Store
 .idea/
 .vscode/
+
+# local test outputs
+*_test.glb
+*.tgz
+
+# artwork thumbnails are shipped as frontend/assets/artworks.zip (unzip it there to use the Style tool)
+frontend/assets/artworks/

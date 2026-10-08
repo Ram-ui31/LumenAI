@@ -18,7 +18,7 @@ from pathlib import Path
 import modal
 
 HERE = Path(__file__).resolve().parent
-GPU = os.environ.get("MODAL_GPU", "L40S")
+GPU = os.environ.get("MODAL_GPU", "H100")
 MODE = os.environ.get("FLASH_MODE", "nf4te")
 REPO = "black-forest-labs/FLUX.2-klein-4B"
 DIFFUSERS = "git+https://github.com/huggingface/diffusers@578c9b2c6636ab2424a0e56186268b83623656b2"

@@ -37,7 +37,7 @@ class Fake(FakeEngine):
         self.steps_seen.append((self.steps, self.seed if seed is None else seed))
         return super().edit(images, instruction, seed, resolution)
 
-    def make3d(self, rgba):
+    def make3d(self, rgba, engine="spar3d"):
         self.calls.append(("make3d", rgba.size))
         return b"glTF-fake", {"faces": 1234, "texture_s": 12.5}
 
@@ -167,7 +167,7 @@ def test_place_box_moves_off_the_subject():
 def test_view3d_not_deployed_message(monkeypatch):
     E = Fake()
 
-    def nope(rgba):
+    def nope(rgba, engine=None):
         raise ValueError("The 3D service is not deployed yet. In the project folder run: modal deploy modal_object3d.py")
     E.make3d = nope
     r = client(E).post("/api/v1/view3d", json={"image": url(scene()), "mask": square_mask(), "complete": False})

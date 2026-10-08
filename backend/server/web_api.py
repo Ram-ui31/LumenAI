@@ -22,7 +22,7 @@ LumenAI editor (frontend/editor.html) - JSON in/out, images as data URLs ("check
   /api/v1/edit            prompt -> the routes above
   /api/v1/segment         click points -> SAM 2.1 mask        /api/v1/recolour, /recolour-shade   colour slider (cached)
   /api/v1/expand          aspect ratio -> Outpaint LoRA       /api/v1/ideas, /place, /add         ideas -> spot+size
-  /api/v1/cutout          transparent PNG                     /api/v1/view3d                      GLB via adobe-ps-object3d
+  /api/v1/cutout          transparent PNG                     /api/v1/view3d                      GLB via adobe-ps-object3d (SF3D)
   /api/v1/trends          Gemini + Google Search -> trending looks as ready-to-run edit prompts (server/trends.py)
   /api/v1/upscale-ai      TADSR x2/x4 (modal_tadsr.py)        /api/v1/verify                      LumenAI mark present?
 Exports (/api/v1/export) carry an invisible LumenAI watermark (server/watermark.py); every prompt passes the request
@@ -47,6 +47,7 @@ from PIL import Image
 MAX_SIDE = int(os.environ.get("ADOBEPS_API_MAX_SIDE", "2048"))   # bigger uploads are processed at this size
 STEPS = int(os.environ.get("ADOBEPS_API_STEPS", "40"))
 SEED = 7
+MAX_REFS = 10        # reference photos per edit (multi-image editing)
 KEEP_REST = "Keep everything else exactly the same: same people, objects, colours, lighting and positions."
 COLOUR_WORDS = None   # filled lazily from editing.recolour.COLOURS
 
@@ -108,22 +109,35 @@ class Engine:
         out, _ = OL.outpaint(pipe, Q, image, tw, th, ox, oy, scene, steps=10, seed=mix_seed(self.seed, image))
         return out
 
-    def make3d(self, rgba: Image.Image) -> tuple[bytes, dict]:
-        """Hunyuan3D-2 runs in its own Modal app (adobe-ps-object3d, deployed function make3d): its CUDA build and
-        16 GB of weights never share this container's GPU with Qwen."""
+    def make3d(self, rgba: Image.Image, engine: str = "spar3d") -> tuple[bytes, dict]:
+        """SPAR3D (default, fuller shapes) or Stable Fast 3D run in their own Modal app (adobe-ps-object3d, classes
+        SPAR3D and SF3D): their CUDA builds never share this container's GPU with Qwen."""
         import modal
 
-        self.remote_peak = self.REMOTE_PEAK_GB["hunyuan3d"]
+        cls = "SF3D" if engine == "sf3d" else "SPAR3D"
+        self.remote_peak = self.REMOTE_PEAK_GB[cls.lower()]
         try:
-            f = modal.Function.from_name("adobe-ps-object3d", "make3d")
+            f = modal.Cls.from_name("adobe-ps-object3d", cls)().make3d
             f.hydrate()
         except Exception as e:  # noqa: BLE001  (modal.exception.NotFoundError when the 3-D app is not deployed)
             if "not found" in str(e).lower():
-                raise ValueError("The 3D service is not deployed yet. In the project folder run: "
+                raise ValueError("The 3D service is not deployed yet. In the backend folder run: "
                                  "modal deploy modal_object3d.py") from e
             raise
         r = f.remote(png(rgba))
-        return r["glb"], r.get("info", {})
+        info = r.get("info", {})
+        if isinstance(info.get("peak_gb"), (int, float)):
+            self.remote_peak = float(info["peak_gb"])
+        return r["glb"], info
+
+    def magenta(self, image: Image.Image, style: Image.Image) -> Image.Image:
+        """Fast style transfer (Magenta, TensorFlow Hub) in its own app (modal_magenta.py)."""
+        job = _remote_cls("lumen-magenta", "Magenta", "modal_magenta.py", "Fast style (Magenta)")
+        self.remote_peak = self.REMOTE_PEAK_GB["magenta"]
+        r = job.run.remote(png(image.convert("RGB")), png(style.convert("RGB")))
+        if isinstance(r.get("peak_gb"), (int, float)):
+            self.remote_peak = float(r["peak_gb"])
+        return Image.open(io.BytesIO(r["png"])).convert("RGB")
 
     def generate(self, prompt: str, w: int, h: int) -> Image.Image:
         """Text-to-image with the same Qwen-Image 2.1 pipeline (no extra model)."""
@@ -136,7 +150,7 @@ class Engine:
 
     # peak GPU memory of the models that run in their own containers (measured: flash test 2026-10-06, v9 benchmark);
     # the editor shows it as "Peak VRAM" for requests that ran there
-    REMOTE_PEAK_GB = {"flash": 13.35, "tadsr": 5.7, "hunyuan3d": 11.5}
+    REMOTE_PEAK_GB = {"flash": 13.35, "tadsr": 5.7, "sf3d": 10.97, "spar3d": 11.03, "magenta": 1.31, "iclight": 4.5}
 
     # --- Lumen Flash: FLUX.2 klein 4B in its own container (modal_flash.py) - it would not fit next to Qwen in 16 GB
     def _flash(self):
@@ -173,6 +187,15 @@ class Engine:
         d = cv2.resize(d, image.size, interpolation=cv2.INTER_CUBIC)
         lo, hi = np.percentile(d, 1), np.percentile(d, 99)
         return np.clip((d - lo) / max(hi - lo, 1e-6), 0, 1).astype(np.float32)
+
+    # --- IC-Light relighting (modal_iclight.py, SD1.5 + IC-Light, own container)
+    def iclight(self, image: Image.Image, prompt: str, direction: str = "none", detail: float = 0.7) -> Image.Image:
+        job = _remote_cls("lumen-iclight", "Job", "modal_iclight.py", "IC-Light relighting")
+        self.remote_peak = self.REMOTE_PEAK_GB["iclight"]
+        p = {"prompt": prompt, "direction": direction, "steps": 25, "cfg": 2.0, "seed": int(self.seed), "side": 768,
+             "detail": float(detail), "strength": 1.0, "max_side": 2048, "fmt": "png", "debug": False}
+        res = job.run.remote(png(image.convert("RGB")), p)
+        return Image.open(io.BytesIO(res["files"]["result.png"])).convert("RGB")
 
     def guard(self, text: str) -> None:
         """Raise ValueError (-> HTTP 400, shown in the editor) if the request must not be run (server/guard.py)."""
@@ -537,7 +560,11 @@ def _ground_mask(E: Engine, img: Image.Image, what: str) -> np.ndarray | None:
 
 
 def edit_prompt(E: Engine, image: Image.Image, prompt: str, mask: np.ndarray | None = None,
-                reference: Image.Image | None = None, strength: float = 1.0) -> tuple[np.ndarray, dict]:
+                reference: Image.Image | None = None, strength: float = 1.0,
+                references: list | None = None) -> tuple[np.ndarray, dict]:
+    """``references``: up to MAX_REFS extra photos (the first is ``reference``); all of them reach multi-image edits."""
+    refs = [r for r in (references or ([reference] if reference is not None else [])) if r is not None][:MAX_REFS]
+    reference = refs[0] if refs else None
     kind = route(prompt, reference is not None, mask is not None)
     info: dict[str, Any] = {"route": kind}
     Wk = Work(image)
@@ -591,12 +618,18 @@ def edit_prompt(E: Engine, image: Image.Image, prompt: str, mask: np.ndarray | N
         info["route"] = kind = "general"
 
     # general instruction edit
-    ims = [img] + ([reference] if reference is not None else [])
+    ims = [img] + [_small(r, 768) for r in refs]       # references at <= 768 px keep the condition memory bounded
     instr = prompt.strip()
-    if reference is not None and "<image2>" not in instr:
+    if refs:      # the user calls the attachments "image 1, image 2, ..."; the model sees the photo as <image1>
+        instr = re.sub(r"(?i)(?<!<)\bimage\s*#?(\d{1,2})\b",
+                       lambda m: f"<image{int(m.group(1)) + 1}>" if 1 <= int(m.group(1)) <= len(refs) else m.group(0), instr)
+    if len(refs) == 1 and "<image2>" not in instr:
         instr = instr.replace("the reference image", "<image2>").replace("reference image", "<image2>")
         if "<image2>" not in instr:
             instr += " Use <image2> as the reference."
+    elif len(refs) > 1 and "<image" not in instr:
+        tags = ", ".join(f"<image{i + 2}>" for i in range(len(refs)))
+        instr += f" Edit <image1>; use the reference images {tags}."
     if mask is not None and mask.sum() > 4:
         pipe, Q = E.load()
         hole = _dilate(Wk.mask(mask), 4)
@@ -701,9 +734,9 @@ QUICK_STEPS = int(os.environ.get("ADOBEPS_QUICK_STEPS", "16"))
 # tier decides how prompt edits and new images are made. v9 numbers: klein 1.1 s/image and GEdit 7.8 vs our 7.4;
 # Qwen-rewritten prompts lifted prompt-following 8.4 -> 9.7.
 TIERS = {
-    "flash": {"name": "Lumen 1.1 - Lumina", "about": "FLUX.2 klein 4B, 4 steps - about 2 s, 13.4 GB"},
-    "lumen": {"name": "Lumen 1.2 - Kroma", "about": "Qwen-Image 2.1, 16 steps - about 12 s"},
-    "pro": {"name": "Lumen 1.3 - Lux", "about": "Qwen-Image 2.1, 40 steps, prompt rewritten by Qwen3-VL - about 40 s"},
+    "flash": {"name": "Lumen 1.1 - Lumina", "about": "FLUX.2 klein 4B, 4 steps, 13.4 GB"},
+    "lumen": {"name": "Lumen 1.2 - Kroma", "about": "Qwen-Image 2.1, 16 steps"},
+    "pro": {"name": "Lumen 1.3 - Lux", "about": "Qwen-Image 2.1, 40 steps, prompt rewritten by Qwen3-VL"},
 }
 
 
@@ -803,13 +836,13 @@ def _full_mask(m: np.ndarray | None, size: tuple[int, int]) -> np.ndarray | None
 
 
 def lumen_edit(E: Engine, image: Image.Image, prompt: str, mask: np.ndarray | None = None,
-               reference: Image.Image | None = None) -> dict:
+               reference: Image.Image | None = None, references: list | None = None) -> dict:
     """One prompt -> routed edit. No after-the-fact checking (removed 2026-10-05: it cost seconds per edit - a
     Qwen3-VL question or two, sometimes a full second edit - without making the result better)."""
     if not prompt.strip():
         raise ValueError("Describe the edit you want first.")
     E.guard(prompt)
-    out, info = edit_prompt(E, image, prompt, mask, reference, 1.0)
+    out, info = edit_prompt(E, image, prompt, mask, reference, 1.0, references)
     for k in ("program", "removal", "_region", "metrics"):
         info.pop(k, None)
     return {"image": data_url(out), "route": info["route"], "checks": [],
@@ -1038,7 +1071,7 @@ COMPLETE_Q = "What is shown in this cut-out? Answer in at most four words."
 
 def view3d_prepare(E: Engine, image: Image.Image, mask: np.ndarray | None, complete: bool = True) -> tuple:
     """Object cut-out (selection, or the main subject) -> optionally completed by Qwen (hidden parts drawn in, v7:
-    better 3-D in 4/4) -> RGBA for Hunyuan3D."""
+    better 3-D in 4/4) -> RGBA for SF3D."""
     from editing.object3d import cutout
 
     Wk = Work(image)
@@ -1046,7 +1079,9 @@ def view3d_prepare(E: Engine, image: Image.Image, mask: np.ndarray | None, compl
     if m is None or m.sum() < 64:
         raise ValueError("Select the object to turn into 3D first.")
     cut = cutout(Wk.img, m)
-    info = {"completed": False}
+    full = _full_mask(m, image.size)
+    ys, xs = np.nonzero(full)
+    info = {"completed": False, "_mask": mask_url(full), "_box": [int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1]}
     if complete:
         from editing.object3d import completion_mask
 
@@ -1117,9 +1152,10 @@ def build_lumen_routes(app, E: Engine, jrun):
         try:
             im = need(d)
             m, ref = mask_of(d, im.size), img_of(d, "reference")
+            refs = [read_image(b) for b in (read_data_url(u) for u in (d.get("references") or [])[:MAX_REFS]) if b]
         except ValueError as e:
             return jrun.bad(e)
-        return await jrun("edit", quality(d, lambda: lumen_edit(E, im, d.get("prompt", ""), m, ref)))
+        return await jrun("edit", quality(d, lambda: lumen_edit(E, im, d.get("prompt", ""), m, ref, refs or None)))
 
     @app.post("/api/v1/segment")
     async def l_seg(req: Request):
@@ -1292,12 +1328,13 @@ def build_lumen_routes(app, E: Engine, jrun):
         except ValueError as e:
             return jrun.bad(e)
         complete = bool(d.get("complete", True))
+        engine3d = "sf3d" if str(d.get("engine", "")).lower() == "sf3d" else "spar3d"
 
         def after(prep):   # runs WITHOUT the GPU lock: the 3-D model is built in the separate object3d app
             cut, info = prep
-            glb, minfo = E.make3d(cut)
+            glb, minfo = E.make3d(cut, engine3d)
             return {"glb": "data:model/gltf-binary;base64," + base64.b64encode(glb).decode(), "cutout": b64png(cut),
-                    "route": "view3d", "info": {**info, **{k: v for k, v in minfo.items() if isinstance(v, (int, float, str))}},
+                    "route": "view3d", "mask": info.pop("_mask", None), "box": info.pop("_box", None), "info": {**info, **{k: v for k, v in minfo.items() if isinstance(v, (int, float, str))}},
                     "checks": []}
         return await jrun("view3d", lambda: view3d_prepare(E, im, m, complete), after=after)
 
@@ -1392,7 +1429,9 @@ def build_app(E: Engine):
                            "upscale"],
                 "trends_key": bool(os.environ.get("GEMINI_API_KEY")),
                 "lumen": ["edit", "segment", "recolour", "recolour-shade", "expand", "ideas", "place", "add", "trends", "upscale-ai", "export", "verify", "generate", "cutout", "view3d",
-                          "bokeh", "bokeh-adjust", "layers", "move", "relight", "style", "product", "pose"],
+                          "bokeh", "bokeh-adjust", "layers", "move", "relight", "style", "product", "pose", "glow", "suggest",
+                          "glow-adjust", "auto-collage", "product-angles", "replace-object"],
+                "max_references": MAX_REFS,
                 "models": TIERS,
                 "quick_steps": QUICK_STEPS, "full_steps": STEPS}
 

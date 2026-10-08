@@ -188,3 +188,32 @@ def test_peak_and_time_reported():
     r = client(E).post("/api/v1/edit", json={"image": url(scene()), "prompt": "make it night"}).json()
     assert "peak_gb" in r and r["peak_gb"] is None                       # no GPU in tests: nothing measured
     assert A.TIERS["flash"]["name"].startswith("Lumen 1.1") and "Lux" in A.TIERS["pro"]["name"]
+
+
+def test_multi_reference_edit_sends_all_images():
+    E = V10()
+    refs = [url(Image.new("RGB", (64, 64), (i * 20, 0, 0))) for i in range(4)]
+    r = client(E).post("/api/v1/edit", json={"image": url(scene()), "prompt": "put these four items on the table",
+                                             "references": refs}).json()
+    assert r["route"] == "general" and E.edits[-1][0] == 5 and "<image5>" in E.edits[-1][1]
+
+
+def test_glow_and_adjust():
+    c = client(V10())
+    r = c.post("/api/v1/glow", json={"image": url(scene()), "point": [40, 40], "colour": "#3366ff", "intensity": 90}).json()
+    a = decode(r["image"]).astype(int)
+    assert a[30:50, 30:50, 2].mean() > np.asarray(scene())[30:50, 30:50, 2].mean()       # bluer near the light
+    r2 = c.post("/api/v1/glow-adjust", json={"glow_id": r["glow_id"], "point": [280, 200], "colour": "#ff3300"}).json()
+    assert decode(r2["image"]).shape == a.shape
+
+
+def test_product_angles_and_replace(monkeypatch):
+    E = V10()
+    r = client(E).post("/api/v1/product-angles", json={"image": url(scene())}).json()
+    assert [x["angle"] for x in r["angles"]] == ["45° left", "Side", "Back", "Top"] and len(E.flash_calls) == 4
+    monkeypatch.setattr(A, "remove_object_info", lambda E, im, m: (np.full((*m.shape, 3), 240, np.uint8), {}))
+    view = Image.new("RGBA", (100, 50), (0, 0, 0, 0))
+    view.paste((10, 200, 10, 255), (10, 10, 90, 40))
+    r = client(E).post("/api/v1/replace-object", json={"image": url(scene()), "mask": square_mask(), "view": url(view)}).json()
+    o = decode(r["image"]).astype(int)
+    assert o[150, 160, 1] > 150 and o[150, 160, 0] < 60 and o[100, 160, 0] > 200   # view on the old ground line, hole filled

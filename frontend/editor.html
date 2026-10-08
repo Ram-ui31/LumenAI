@@ -139,8 +139,11 @@ button { font: inherit; color: inherit; }
 .chip:hover { border-color: var(--olive); }
 .chip .icon { width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
 .prompt { width: min(820px, 100%); display: flex; align-items: center; gap: 8px; background: var(--paper); border: 1.5px solid var(--olive); border-radius: 22px; padding: 8px 8px 8px 10px; box-shadow: 0 16px 34px -26px rgba(62,65,36,.7); }
-.prompt input { flex: 1; min-width: 0; border: 0; background: none; font: 400 20px/1.4 var(--body); padding: 10px 6px; outline: none; color: var(--ink); }
-.prompt input::placeholder { color: #8d8a7c; }
+.prompt input, .prompt textarea { flex: 1; min-width: 0; border: 0; background: none; font: 400 20px/1.4 var(--body); padding: 10px 6px; outline: none; color: var(--ink); }
+.prompt textarea { resize: none; overflow-y: hidden; max-height: 40vh; align-self: center; display: block; }
+.prompt textarea.tall { overflow-y: auto; }
+.prompt:has(textarea.multi) { align-items: flex-end; }
+.prompt input::placeholder, .prompt textarea::placeholder { color: #8d8a7c; }
 .round { width: 42px; height: 42px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer; background: none; flex: none; }
 .round:hover { background: rgba(85, 89, 52, .1); }
 .send { background: var(--olive); color: var(--cream); }
@@ -297,6 +300,69 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
 .empty-stage .or { margin: 18px 0 4px; }
 .empty-stage .row { justify-content: center; }
 .chips[hidden] { display: none; }
+.glow-live { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+.glow-live[hidden] { display: none; }
+.kind { display: inline-block; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; padding: 1px 7px; margin-right: 7px; border-radius: 999px; background: rgba(85, 89, 52, .14); color: var(--olive); vertical-align: 2px; }
+.kind.k-remove { background: rgba(168, 60, 40, .13); color: #8a3a28; }
+.kind.k-add { background: rgba(47, 79, 123, .13); color: #2f4f7b; }
+.placed-box { border: 1px solid var(--olive); border-radius: 12px; padding: 10px 12px; margin: 8px 0 12px; background: rgba(85, 89, 52, .06); }
+.sheet-grip, .side .mini-b { display: none; }
+.slot:empty { display: none; }
+.slot > div > h2 { display: none; }
+.slot .hist { max-height: none; }
+@media (max-width: 1100px) {
+  .side { max-height: var(--sheet-h, 62vh); overflow-y: auto; transition: transform .3s ease, max-height .15s; }
+  .sheet-grip { display: block; height: 18px; margin: -12px -4px 2px; cursor: ns-resize; touch-action: none; position: relative; }
+  .sheet-grip::before { content: ""; position: absolute; left: 50%; top: 7px; width: 44px; height: 5px; margin-left: -22px; border-radius: 3px; background: var(--line); }
+  .side .mini-b { display: inline-grid; place-items: center; margin-left: auto; width: 36px; padding: 0; font-size: 24px; }
+  .app.sheet-mini #ctx > :not(h2):not(.sheet-grip) { display: none; }
+  .app.sheet-mini #ctx h2 { margin: 0; }
+}
+@media (max-width: 700px) {
+  .app { grid-template-rows: 56px auto auto; }
+  .stage { order: 3; grid-template-rows: auto auto; }
+  .prompt-zone { order: -1; padding: 10px 12px 0; }
+  .model-menu { bottom: auto; top: calc(100% + 10px); max-width: calc(100vw - 24px); }
+  nav.rail { order: 4; position: sticky; bottom: 0; z-index: 18; flex-direction: row; align-items: center; overflow-x: auto; border-top: 1px solid var(--line); border-bottom: 0; padding: 6px 8px; gap: 4px; scrollbar-width: none; }
+  nav.rail .grp { display: flex; align-items: center; gap: 2px; flex: none; }
+  nav.rail .gh { display: inline-flex; gap: 6px; width: auto; height: 40px; margin: 0; padding: 0 12px; font-size: 14px; letter-spacing: .02em; border: 1px solid var(--line);
+                 border-radius: 999px; background: var(--paper); pointer-events: auto; white-space: nowrap; text-transform: none; }
+  nav.rail .gh::after { display: block; transform: rotate(-45deg); margin: 0; }
+  nav.rail .grp.mopen > .gh { background: var(--olive); color: var(--cream); border-color: var(--olive); }
+  nav.rail .grp.mopen > .gh::after { transform: rotate(135deg); }
+  nav.rail .grp > .gt { display: none; }
+  nav.rail .grp.mopen > .gt { display: flex; gap: 2px; }
+  nav.rail .tool { min-width: 66px; padding: 6px 2px; }
+  .side { bottom: 66px; max-height: min(var(--sheet-h, 52vh), calc(100vh - 140px)); transform: translateY(calc(100% + 100px)); }
+  .mn-pre { display: none; }
+  #promptInput { min-width: 0; }
+  .prompt { padding: 4px 5px 4px 6px; gap: 4px; border-radius: 18px; }
+  .prompt input, .prompt textarea { font-size: 16px; padding: 6px 4px; }
+  .prompt:has(textarea.multi) { flex-wrap: wrap; }
+  .prompt:has(textarea.multi) textarea { order: -1; flex-basis: 100%; padding: 6px 8px 2px; }
+  .prompt:has(textarea.multi) .model { margin-left: auto; }
+  .prompt .round { width: 34px; height: 34px; }
+  .prompt .round .icon { width: 18px; height: 18px; }
+  .model-btn { height: 32px; padding: 0 8px 0 10px; font-size: 14px; }
+}
+.ex-custom[hidden], .ex-grow[hidden] { display: none; }
+.ex-custom { align-items: center; gap: 8px; margin-top: 10px; }
+.field.num { width: 76px; }
+.ex-grow { margin-top: 10px; }
+.ex-grow input { width: 100%; }
+.attach { display: flex; gap: 8px; flex-wrap: wrap; width: min(980px, 100%); }
+.attach[hidden], .check[hidden] { display: none; }
+.att { position: relative; margin: 0; width: 64px; }
+.att img { width: 64px; height: 64px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); display: block; background: var(--paper); }
+.att figcaption { font-size: 12px; color: var(--ink-soft); text-align: center; margin-top: 2px; }
+.att button { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); font-size: 14px; line-height: 1; cursor: pointer; padding: 0; }
+.check-x { border: 0; background: none; font-size: 22px; line-height: 1; color: var(--ink-soft); cursor: pointer; padding: 0 2px; }
+.check-x:hover { color: var(--ink); }
+.check .runstats-m { display: none; }
+@media (max-width: 1100px) {
+  .check .runstats-m { display: flex; gap: 14px; font-size: 14px; color: var(--ink-soft); margin-top: 6px; }
+  .check .runstats-m b { color: var(--ink); font-weight: 600; }
+}
 /* v10 tools */
 .brush-cur { position: absolute; border: 1.5px solid #fff; outline: 1px solid var(--ink); border-radius: 50%; pointer-events: none; z-index: 4; transform: translate(-50%, -50%); }
 .brush-cur[hidden] { display: none; }
@@ -328,6 +394,11 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
 .rs-meter i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 999px; background: var(--olive); transition: width .6s cubic-bezier(.2, .9, .2, 1); }
 .rs-meter span { position: absolute; right: 0; top: 12px; font-size: 13px; color: var(--ink-soft); }
 .rs-note { font-size: 14px; color: var(--ink-soft); margin: 22px 0 0; }
+.arts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; max-height: 260px; overflow-y: auto; }
+.art { border: 1px solid var(--line); border-radius: 10px; padding: 0; overflow: hidden; background: #fff; cursor: pointer; display: grid; text-align: left; }
+.art img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
+.art span { font-size: 12px; padding: 3px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.art[aria-pressed="true"] { border-color: var(--olive); box-shadow: 0 0 0 2px var(--olive); }
 .tip { font-size: 14px; color: var(--ink-soft); margin-top: 8px; }
 </style>
 </head>
@@ -386,19 +457,19 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
       <button class="tool" aria-pressed="true" data-tool="select"><svg class="icon"><use href="#i-select"/></svg>Select</button><button class="tool" aria-pressed="false" data-tool="brush"><svg class="icon"><use href="#i-brush"/></svg>Brush</button>
     </div></div>
     <div class="grp" data-g="edit"><button class="gh" type="button" aria-expanded="true">Edit</button><div class="gt">
-      <button class="tool" aria-pressed="false" data-tool="remove"><svg class="icon"><use href="#i-eraser"/></svg>Remove</button><button class="tool" aria-pressed="false" data-tool="move"><svg class="icon"><use href="#i-move"/></svg>Move</button><button class="tool" aria-pressed="false" data-tool="recolour"><svg class="icon"><use href="#i-palette"/></svg>Recolour</button><button class="tool" aria-pressed="false" data-tool="expand"><svg class="icon"><use href="#i-expand"/></svg>Expand</button><button class="tool" aria-pressed="false" data-tool="ideas"><svg class="icon"><use href="#i-bulb"/></svg>Add object</button>
+      <button class="tool" aria-pressed="false" data-tool="remove"><svg class="icon"><use href="#i-eraser"/></svg>Remove</button><button class="tool" aria-pressed="false" data-tool="move"><svg class="icon"><use href="#i-move"/></svg>Move</button><button class="tool" aria-pressed="false" data-tool="recolour"><svg class="icon"><use href="#i-palette"/></svg>Recolour</button><button class="tool" aria-pressed="false" data-tool="expand"><svg class="icon"><use href="#i-expand"/></svg>Expand</button>
     </div></div>
     <div class="grp" data-g="create"><button class="gh" type="button" aria-expanded="true">Create</button><div class="gt">
-      <button class="tool" aria-pressed="false" data-tool="create"><svg class="icon"><use href="#i-new"/></svg>New image</button><button class="tool" aria-pressed="false" data-tool="product"><svg class="icon"><use href="#i-bag"/></svg>Product shot</button><button class="tool" aria-pressed="false" data-tool="style"><svg class="icon"><use href="#i-wand"/></svg>Style</button><button class="tool" aria-pressed="false" data-tool="pose"><svg class="icon"><use href="#i-user"/></svg>Pose</button><button class="tool" aria-pressed="false" data-tool="collage"><svg class="icon"><use href="#i-grid"/></svg>Collage</button><button class="tool" aria-pressed="false" data-tool="trends"><svg class="icon"><use href="#i-trend"/></svg>Trends</button>
+      <button class="tool" aria-pressed="false" data-tool="create"><svg class="icon"><use href="#i-new"/></svg>New image</button><button class="tool" aria-pressed="false" data-tool="product"><svg class="icon"><use href="#i-bag"/></svg>Product shot</button><button class="tool" aria-pressed="false" data-tool="style"><svg class="icon"><use href="#i-wand"/></svg>Style</button><button class="tool" aria-pressed="false" data-tool="pose"><svg class="icon"><use href="#i-user"/></svg>Pose</button><button class="tool" aria-pressed="false" data-tool="collage"><svg class="icon"><use href="#i-grid"/></svg>Collage</button><button class="tool" aria-pressed="false" data-tool="suggest"><svg class="icon"><use href="#i-sparkle"/></svg>Suggestions</button>
     </div></div>
     <div class="grp" data-g="enhance"><button class="gh" type="button" aria-expanded="true">Enhance</button><div class="gt">
-      <button class="tool" aria-pressed="false" data-tool="upscale"><svg class="icon"><use href="#i-sparkle"/></svg>Upscale</button><button class="tool" aria-pressed="false" data-tool="relight"><svg class="icon"><use href="#i-sun"/></svg>Relight</button><button class="tool" aria-pressed="false" data-tool="bokeh"><svg class="icon"><use href="#i-aperture"/></svg>Bokeh</button><button class="tool" aria-pressed="false" data-tool="cutout"><svg class="icon"><use href="#i-scissors"/></svg>Cut out</button>
+      <button class="tool" aria-pressed="false" data-tool="upscale"><svg class="icon"><use href="#i-sparkle"/></svg>Upscale</button><button class="tool" aria-pressed="false" data-tool="relight"><svg class="icon"><use href="#i-sun"/></svg>Relight</button><button class="tool" aria-pressed="false" data-tool="bokeh"><svg class="icon"><use href="#i-aperture"/></svg>Bokeh</button><button class="tool" aria-pressed="false" data-tool="glow"><svg class="icon"><use href="#i-bulb"/></svg>Glow light</button><button class="tool" aria-pressed="false" data-tool="cutout"><svg class="icon"><use href="#i-scissors"/></svg>Cut out</button>
     </div></div>
     <div class="grp" data-g="motion"><button class="gh" type="button" aria-expanded="true">Motion &amp; 3D</button><div class="gt">
       <button class="tool" aria-pressed="false" data-tool="3d"><svg class="icon"><use href="#i-cube"/></svg>View in 3D</button><button class="tool" aria-pressed="false" data-tool="dolly"><svg class="icon"><use href="#i-film"/></svg>Dolly video</button>
     </div></div>
     <div class="grp" data-g="session"><button class="gh" type="button" aria-expanded="true">Session</button><div class="gt">
-      <button class="tool" aria-pressed="false" data-tool="history"><svg class="icon"><use href="#i-clock"/></svg>History</button>
+      <button class="tool" aria-pressed="false" data-tool="variations"><svg class="icon"><use href="#i-grid"/></svg>Variations</button><button class="tool" aria-pressed="false" data-tool="history"><svg class="icon"><use href="#i-clock"/></svg>History</button>
     </div></div>
   </nav>
 
@@ -407,6 +478,7 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
       <div class="canvas" id="canvas">
         <img id="before" alt="Before the last edit">
         <div class="after-wrap" id="afterWrap"><img id="after" class="after" alt="Your photo"></div>
+        <canvas id="glowLive" class="glow-live" hidden aria-hidden="true"></canvas>
         <canvas class="sel" id="selCanvas" aria-hidden="true"></canvas>
         <canvas class="move-prev" id="movePrev" aria-hidden="true" hidden></canvas>
         <div class="brush-cur" id="brushCur" hidden></div>
@@ -423,40 +495,34 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
             <button class="chip" data-g="3:2">Landscape 3:2</button><button class="chip" data-g="16:9">Wide 16:9</button><button class="chip" data-g="9:16">Story 9:16</button></div></div></div>
       </div>
       <section class="check" id="check">
-        <h3><span id="checkTitle">Ready when you are</span> <span class="muted" id="checkTime"></span></h3>
+        <h3><span id="checkTitle">Ready when you are</span> <button type="button" class="check-x" id="checkClose" aria-label="Close">×</button></h3>
         <p class="sub" id="checkSub">Pick a tool, or describe your edit below.</p>
         <p class="status" aria-live="polite"><span class="dotp" aria-hidden="true"></span><span class="status-text" id="statusText">Connecting to the AI</span></p>
         <ul id="checkList"></ul>
+        <p class="runstats-m" id="rsMini">Peak VRAM <b id="rsMiniV">–</b> <span id="rsMiniM"></span></p>
         <div class="route" id="routeRow" hidden><span id="routeText"></span>
           <span class="links"><a href="#" id="anotherLink">Another version</a><a href="#" id="fullLink">Redo with Lux</a><a href="#" id="retryLink" hidden>Try again</a></span></div>
       </section>
     </div>
 
     <div class="prompt-zone">
-      <div class="chips" aria-label="Suggestions">
-        <button class="chip" data-act="cutout">Remove the background</button>
-        <button class="chip">Warm evening light</button>
-        <button class="chip" data-act="expand" data-ratio="16:9">Expand to 16:9</button>
-        <button class="chip">Make it sharper</button>
-        <button class="chip" data-act="trends"><svg class="icon"><use href="#i-trend"/></svg>Trending today</button>
-      </div>
+      <div class="attach" id="attach" hidden aria-label="Reference images"></div>
       <form class="prompt" id="promptForm">
-        <button type="button" class="round" id="refBtn" aria-label="Add a reference photo (for pose or style)" title="Add a reference photo (pose, style, an object to copy)"><svg class="icon"><use href="#i-plus"/></svg></button>
+        <button type="button" class="round" id="refBtn" aria-label="Add reference photos (up to 10)" title="Add up to 10 reference photos (pose, style, objects to use)"><svg class="icon"><use href="#i-plus"/></svg></button>
         <span class="tags">
-          <span class="tag" id="refTag" hidden><img id="refThumb" alt=""><span>Reference</span><button type="button" id="refClear" aria-label="Remove the reference photo">×</button></span>
-          <span class="tag" id="selTag" hidden><span>In selection</span><button type="button" id="selClear" aria-label="Clear the selection">×</button></span>
+                    <span class="tag" id="selTag" hidden><span>In selection</span><button type="button" id="selClear" aria-label="Clear the selection">×</button></span>
         </span>
-        <input id="promptInput" aria-label="Describe your edit" placeholder="Describe your edit, like “make the bottle amber”" autocomplete="off">
+        <textarea id="promptInput" rows="1" aria-label="Describe your edit" placeholder="Describe your edit, like “make the bottle amber”" autocomplete="off"></textarea>
         <div class="model" id="modelPick">
-          <button type="button" class="model-btn" id="modelBtn" aria-haspopup="listbox" aria-expanded="false" title="Choose the AI model"><b id="modelName">Lumen 1.2 – Kroma</b><small id="modelSpeed">~12 s</small><svg class="icon"><use href="#i-chev"/></svg></button>
+          <button type="button" class="model-btn" id="modelBtn" aria-haspopup="listbox" aria-expanded="false" title="Choose the AI model"><b id="modelName">Lumen 1.2 – Kroma</b><svg class="icon"><use href="#i-chev"/></svg></button>
           <ul class="model-menu" id="modelMenu" role="listbox" aria-label="AI model" hidden>
-            <li role="option" tabindex="-1" data-m="flash"><b>Lumen 1.1 – Lumina</b><small>Fastest, about 2 s. Great for drafts and quick ideas.</small><span class="tick"></span></li>
-            <li role="option" tabindex="-1" data-m="lumen"><b>Lumen 1.2 – Kroma</b><small>Balanced, about 12 s. Our everyday model.</small><span class="tick"></span></li>
-            <li role="option" tabindex="-1" data-m="pro"><b>Lumen 1.3 – Lux</b><small>Best detail, about 40 s. Rewrites your request into a precise prompt first.</small><span class="tick"></span></li>
+            <li role="option" tabindex="-1" data-m="flash"><b>Lumen 1.1 – Lumina</b><span class="tick"></span></li>
+            <li role="option" tabindex="-1" data-m="lumen"><b>Lumen 1.2 – Kroma</b><span class="tick"></span></li>
+            <li role="option" tabindex="-1" data-m="pro"><b>Lumen 1.3 – Lux</b><span class="tick"></span></li>
           </ul>
         </div>
         <button class="round send" id="sendBtn" aria-label="Make the edit"><svg class="icon"><use href="#i-send"/></svg></button>
-        <input type="file" id="refIn" accept="image/*" hidden>
+        <input type="file" id="refIn" accept="image/*" multiple hidden>
       </form>
     </div>
   </main>
@@ -474,7 +540,7 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
       <p class="rs-note" id="rsNote">Run any tool to see how long it took and how much GPU memory it used.</p>
     </div>
 
-    <div>
+    <div id="varsBox">
       <h2>Variations</h2>
       <div class="vars" role="group" aria-label="Variations" id="vars"></div>
     </div>
@@ -487,7 +553,7 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
 </div>
 
 <dialog class="v3d" id="v3d" aria-label="3D view">
-  <div class="bar"><h3>View in 3D</h3><a class="btn sm line" id="glbDl" download="lumen-object.glb" href="#">Download .glb</a><button class="btn sm" id="v3dClose">Close</button></div>
+  <div class="bar"><h3>View in 3D</h3><button class="btn sm line" id="useView" title="Put the object, as seen now, into your photo in place of the original">Use this view</button><a class="btn sm line" id="glbDl" download="lumen-object.glb" href="#">Download .glb</a><button class="btn sm" id="v3dClose">Close</button></div>
   <div class="view" id="v3dView"><div class="load" id="v3dLoad">Loading the viewer…</div><span class="hint">Drag to turn, scroll to zoom</span></div>
 </dialog>
 <dialog class="v3d media" id="media" aria-label="Video">
@@ -496,7 +562,7 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
 </dialog>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="config.js"></script>
+<script>document.write('<script src="config.js?t=' + Date.now() + '"><\/script>');</script>  <!-- never cached: the API address can change -->
 <script>
 (() => {
   // ---------------------------------------------------------------- server
@@ -506,10 +572,10 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
   const $ = id => document.getElementById(id);
   const ROUTE_NAMES = { general: 'instruction edit', recolour: 'precise recolour', remove: 'smart removal', pose: 'pose transfer',
     deblur: 'motion-blur fix', expand: 'outpaint', add: 'add object', cutout: 'background removal', view3d: '3D model', ideas: 'idea finder',
-    trends: 'Gemini + Google Search', upscale: 'AI upscaler (TADSR)', generate: 'text to image', style: 'style transfer',
+    trends: 'Gemini + Google Search', suggest: 'Qwen3-VL suggestions', upscale: 'AI upscaler (TADSR)', generate: 'text to image', style: 'style transfer',
     bokeh: 'depth-aware bokeh (Depth Anything V2)', move: 'move object (smart removal + re-placing)', relight: 'relight (light transfer keeps detail)',
-    product: 'product shoot (Qwen-Image 2.1)', dolly: 'dolly video (depth layers)', collage: 'collage' };
-  const TIERS = { flash: ['Lumen 1.1 – Lumina', '~2 s'], lumen: ['Lumen 1.2 – Kroma', '~12 s'], pro: ['Lumen 1.3 – Lux', '~40 s'] };
+    product: 'product shoot', glow: 'depth glow light', replace3d: '3D view placed in the photo', dolly: 'dolly video (depth layers)', collage: 'collage' };
+  const TIERS = { flash: ['Lumen 1.1 – Lumina'], lumen: ['Lumen 1.2 – Kroma'], pro: ['Lumen 1.3 – Lux'] };
   const TIER_ROUTES = ['general', 'generate', 'style'];
 
   let online = 'connecting';
@@ -549,7 +615,7 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
 
   // ---------------------------------------------------------------- state
   const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } } };
-  const S = { hist: [], cur: -1, sel: null, ref: null, model: TIERS[store.get('lumen.model')] ? store.get('lumen.model') : 'lumen', last: null, rcId: null, vars: [], tool: 'select', name: 'Photo', move: null };
+  const S = { hist: [], cur: -1, sel: null, ref: null, model: TIERS[store.get('lumen.model')] ? store.get('lumen.model') : 'lumen', refs: [], last: null, rcId: null, vars: [], tool: 'select', name: 'Photo', move: null };
   const qualityOf = m => m === 'pro' ? 'full' : 'quick';
   let busy = false;
   const cur = () => S.hist[S.cur];
@@ -576,7 +642,7 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
       S.hist = [{ label: 'Original', img: n.src, w: n.w, h: n.h, t: stamp() }]; S.cur = 0;
       S.name = name || 'Photo'; S.sel = null; S.rcId = null; seenIdeas = []; ideas = []; addBox = null; S.vars = []; S.last = null;
       $('fileName').textContent = S.name; $('emptyStage').hidden = true;
-      $('promptInput').placeholder = 'Describe your edit, like “make the bottle amber”'; document.querySelector('.prompt-zone .chips').hidden = false;
+      $('promptInput').placeholder = 'Describe your edit, like “make the bottle amber”';
       resetCard(); render(); clearSel(); renderPanel();
     } catch (e) {
       $('emptyStage').hidden = false;
@@ -600,7 +666,6 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
     S.hist = []; S.cur = -1; S.sel = null; S.last = null; S.vars = [];
     $('emptyStage').hidden = false; $('fileName').textContent = 'New image';
     $('promptInput').placeholder = 'Describe an image to create, like “a cozy reading nook at dusk”';
-    document.querySelector('.prompt-zone .chips').hidden = true;
     fitEmpty();
     ['undoBtn', 'redoBtn', 'revertBtn'].forEach(id => $(id).disabled = true);
     after.removeAttribute('src'); before.removeAttribute('src'); div.hidden = true; $('lblA').hidden = $('lblB').hidden = true;
@@ -624,7 +689,7 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
       S.hist = [{ label, img: r.image, w: im.naturalWidth, h: im.naturalHeight, t: stamp() }];
       S.cur = 0; S.name = 'Created image'; $('fileName').textContent = S.name; $('emptyStage').hidden = true;
       $('promptInput').placeholder = 'Describe your edit, like “make the bottle amber”'; $('promptInput').value = '';
-      document.querySelector('.prompt-zone .chips').hidden = false;
+     
       S.last = null; render(); finish({ ...r, model: S.model }, 'generate'); renderPanel();
     } catch (e) { fail(e.message, /can't make this edit|so it was not run/.test(e.message) ? null : () => doGenerate(text, keep)); }
     setBusy(false);
@@ -701,7 +766,7 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
 
   // ---------------------------------------------------------------- selection (click -> SAM 2.1 on the server)
   const selCanvas = $('selCanvas');
-  const PICK_TOOLS = ['select', 'remove', 'recolour', '3d', 'move', 'bokeh', 'dolly'];
+  const PICK_TOOLS = ['select', 'remove', 'recolour', '3d', 'move', 'bokeh', 'dolly', 'glow'];
   let selBusy = false;
   function imgPoint(e) {
     const r = canvas.getBoundingClientRect(), c = cur();
@@ -738,6 +803,7 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
     if (drag || busy || selBusy || !cur() || !PICK_TOOLS.includes(S.tool) || e.target.closest('.divider, .empty-stage')) { press = null; return; }
     const p = press; press = null;
     if (S.tool === 'bokeh' && cur().bokehId && !(p && p.moved)) return bokehAdjust(imgPoint(e));   // after Bokeh: click = focus here
+    if (S.tool === 'glow' && !(p && p.moved)) return glowAt(imgPoint(e));                          // Glow: click = put the light here
     if (p && p.moved && p.box) {
       const c = cur(), b = p.box;
       boxSel.hidden = true;
@@ -786,7 +852,7 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
   $('selClear').onclick = clearSel;
 
   // ---------------------------------------------------------------- processing signature (driven by real requests)
-  const work = $('work'), list = $('checkList'), sub = $('checkSub'), time = $('checkTime'), title = $('checkTitle'), statusEl = $('statusText');
+  const work = $('work'), list = $('checkList'), sub = $('checkSub'), title = $('checkTitle'), statusEl = $('statusText');
   let timers = [], clock = null, started = 0;
   const later = (ms, fn) => timers.push(setTimeout(fn, ms));
   const say = text => { statusEl.classList.add('swap'); setTimeout(() => { statusEl.textContent = text; statusEl.classList.remove('swap'); }, 220); };
@@ -800,11 +866,16 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
     generate: ['Reading your description', 'Creating the image'],
     shade: ['Changing the shade'],
     refocus: ['Re-rendering the lens blur'],
+    glow: ['Measuring depth', 'Lighting the scene'],
+    angles: ['Turning the product', 'Shooting four angles'],
+    replace3d: ['Removing the old object', 'Placing the new view'],
+    collage: ['Ranking your photos', 'Designing three layouts'],
     trends: ['Searching what is popular right now', 'Turning trends into edits'],
+    suggest: ['Looking at your photo', 'Picking edits that suit it'],
     upscale: ['Reading the fine detail', 'Adding real detail at the new size'],
     add: ['Making room for it', 'Adding it with a soft shadow'],
     cutout: ['Finding the main subject', 'Tracing soft edges'],
-    view3d: ['Cutting out the object', 'Completing hidden parts', 'Building the 3D model (1–3 minutes)'],
+    view3d: ['Cutting out the object', 'Completing hidden parts', 'Building the 3D model'],
     style: ['Reading the style', 'Repainting your photo'],
     pose: ['Reading the pose in the reference', 'Posing your person', 'Correcting the joints'],
     bokeh: ['Measuring depth', 'Finding the subject', 'Blurring like a real lens'],
@@ -815,31 +886,33 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
   };
   function resetCard() {
     timers.forEach(clearTimeout); clearInterval(clock); work.classList.remove('processing', 'settled');
-    title.textContent = 'Ready when you are'; time.textContent = ''; sub.textContent = 'Pick a tool, or describe your edit below.';
+    title.textContent = 'Ready when you are'; sub.textContent = 'Pick a tool, or describe your edit below.';
     list.innerHTML = ''; list.classList.add('idle'); $('routeRow').hidden = true; idleStatus();
   }
   function run(kind, label) {
     timers.forEach(clearTimeout); timers = []; clearInterval(clock);
     list.classList.remove('idle');
     sub.textContent = '“' + label + '”';
-    title.textContent = kind === 'view3d' ? 'Building in 3D' : kind === 'ideas' ? 'Finding ideas' : kind === 'trends' ? 'Finding trends' : kind === 'generate' ? 'Creating your image' : kind === 'dolly' ? 'Making your video' : 'Making your edit';
+    title.textContent = kind === 'view3d' ? 'Building in 3D' : kind === 'ideas' ? 'Finding ideas' : kind === 'suggest' ? 'Finding suggestions' : kind === 'trends' ? 'Finding trends' : kind === 'generate' ? 'Creating your image' : kind === 'dolly' ? 'Making your video' : 'Making your edit';
     work.classList.remove('settled'); work.classList.add('processing'); $('routeRow').hidden = true;
     const st = STAGES[kind] || STAGES.edit;
     list.innerHTML = '';
     const items = st.map(s => { const li = document.createElement('li'); li.className = 'pending'; li.innerHTML = '<span class="st"></span><span class="t"></span>'; li.querySelector('.t').textContent = s; list.appendChild(li); return li; });
     statusEl.textContent = online === 'waking' || online === 'connecting' ? 'Waking the AI first (1–3 minutes)' : st[0];
     started = Date.now();
-    clock = setInterval(() => { time.textContent = fmt((Date.now() - started) / 1000); }, 250);
+    $('check').hidden = false;
     later(120, () => items[0].className = 'work');
     st.slice(1).forEach((s, i) => later(1300 + i * 2600, () => { items[i].className = 'done'; items[i + 1].className = 'work'; if (online === 'ready') say(s); }));
-    later(25000, () => say(S.model === 'pro' && kind !== 'view3d' ? 'Still working: Lumen 1.3 – Lux takes about half a minute' : 'Still working, nearly there'));
-    later(70000, () => say(kind === 'view3d' ? 'Still building: 3D takes a few minutes the first time' : 'Taking longer than usual (the AI may be starting up)'));
+    later(25000, () => say('Still working, nearly there'));
+    later(70000, () => say(kind === 'view3d' ? 'Still building: the first 3D model takes longer while the model loads' : 'Taking longer than usual (the AI may be starting up)'));
   }
+  $('checkClose').onclick = () => { $('check').hidden = true; };
   function showStats(r, kind) {
     const sec = r.seconds != null ? r.seconds : (Date.now() - started) / 1000;
     $('rsTime').textContent = sec < 60 ? sec.toFixed(1) + ' s' : fmt(sec);
     const g = r.peak_gb;
     $('rsVram').textContent = g != null ? g.toFixed(1) + ' GB' : '–';
+    $('rsMiniV').textContent = g != null ? g.toFixed(1) + ' GB of 16 GB' : '–';
     $('rsBar').style.width = g != null ? Math.min(100, g / 16 * 100) + '%' : '0';
     const tier = TIER_ROUTES.includes(r.route) ? (r.model || (S.last && S.last.model) || S.model) : null;
     $('rsModel').textContent = tier ? TIERS[tier][0] : '';
@@ -850,8 +923,8 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
     timers.forEach(clearTimeout); timers = []; clearInterval(clock);
     work.classList.remove('processing'); void work.offsetWidth; work.classList.add('settled');
     // no after-the-fact checks any more (removed: they cost seconds per edit) - just the result and the time
-    title.textContent = kind === 'ideas' ? 'Ideas ready' : kind === 'trends' ? 'Trends ready' : kind === 'generate' ? 'Image created' : kind === 'dolly' ? 'Video ready' : 'Edit complete';
-    time.textContent = fmt(r.seconds != null ? r.seconds : (Date.now() - started) / 1000);
+    title.textContent = kind === 'ideas' ? 'Ideas ready' : kind === 'suggest' ? 'Suggestions ready' : kind === 'trends' ? 'Trends ready' : kind === 'generate' ? 'Image created' : kind === 'dolly' ? 'Video ready' : 'Edit complete';
+    $('check').hidden = false;
     say(r.note || 'Done');
     list.innerHTML = '';
     const rn = ROUTE_NAMES[r.route] || r.route || '';
@@ -925,25 +998,31 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
     if (ratio) return doExpand(`${ratio[2]}:${ratio[3]}`);
     const payload = { prompt: text };
     if (S.sel) payload.mask = S.sel.mask;
-    if (S.ref) payload.reference = S.ref;
+    if (S.refs.length > 1) payload.references = S.refs; else if (S.ref) payload.reference = S.ref;
     const label = title ? 'Trend: ' + title : text.length > 60 ? text.slice(0, 57) + '…' : text;
     act(/^\s*(remove|erase|delete|get rid of|take out)\b/i.test(text) ? 'remove' : 'edit', 'edit', payload, label);
   }
   function doCutout() { act('cutout', 'cutout', {}, 'Background removed', { variable: false }); }
   function doExpand(ratio, grow) { act('expand', 'expand', ratio ? { ratio } : { grow: grow || .25 }, ratio ? `Expanded to ${ratio}` : 'Expanded all round'); }
 
+  // the prompt grows to show the whole text (Enter sends, Shift+Enter adds a line)
+  const pin = $('promptInput');
+  function fitPrompt() {
+    pin.style.height = 'auto'; const h = pin.scrollHeight; pin.style.height = h + 'px';
+    const one = parseFloat(getComputedStyle(pin).lineHeight) * 1.6 + 2;
+    pin.classList.toggle('multi', h > one + parseFloat(getComputedStyle(pin).paddingTop) * 2);
+    pin.classList.toggle('tall', h >= innerHeight * .4 - 2);
+  }
+  pin.addEventListener('input', fitPrompt); addEventListener('resize', fitPrompt);
+  pin.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('promptForm').requestSubmit(); } });
+  const pinDesc = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
+  Object.defineProperty(pin, 'value', { get() { return pinDesc.get.call(this); }, set(v) { pinDesc.set.call(this, v); requestAnimationFrame(fitPrompt); } });
   $('promptForm').onsubmit = e => { e.preventDefault(); const v = $('promptInput').value.trim(); if (!v) return; cur() ? doEdit(v) : doGenerate(v); };
-  document.querySelectorAll('.prompt-zone .chip').forEach(c => c.onclick = () => {
-    if (c.dataset.act === 'cutout') return doCutout();
-    if (c.dataset.act === 'expand') return doExpand(c.dataset.ratio);
-    if (c.dataset.act === 'trends') { document.querySelector('.tool[data-tool="trends"]').click(); if (!trend.items.length) ACTIONS.trends(); return; }
-    $('promptInput').value = c.textContent.trim(); doEdit(c.textContent);
-  });
   // ---------------------------------------------------------------- model picker (Lumen 1.1 Lumina / 1.2 Kroma / 1.3 Lux)
   const menu = $('modelMenu');
   function setModel(m) {
     S.model = m; store.set('lumen.model', m);
-    $('modelName').textContent = TIERS[m][0]; $('modelSpeed').textContent = TIERS[m][1];
+    const nm = TIERS[m][0].split(' – '); $('modelName').innerHTML = `<span class="mn-pre">${nm[0]} – </span>${nm[1]}`;
     menu.querySelectorAll('li').forEach(li => li.setAttribute('aria-selected', li.dataset.m === m));
   }
   const openMenu = on => { menu.hidden = !on; $('modelBtn').setAttribute('aria-expanded', on); if (on) (menu.querySelector('[aria-selected="true"]') || menu.firstElementChild).focus(); };
@@ -957,10 +1036,29 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
 
   // reference photo (pose, style, "like this one")
   $('refBtn').onclick = () => $('refIn').click();
-  $('refIn').onchange = () => { const f = $('refIn').files[0]; if (!f) return; const r = new FileReader();
-    r.onload = async () => { const n = await normalise(r.result); S.ref = n.src; $('refThumb').src = n.src; $('refTag').hidden = false; toast('Reference added. Ask for its pose (“pose like this”) or its style (“in this style”), or use the Pose / Style tools.'); renderPanel(); };
-    r.readAsDataURL(f); $('refIn').value = ''; };
-  $('refClear').onclick = () => { S.ref = null; $('refTag').hidden = true; renderPanel(); };
+  // up to 10 reference photos (multi-image editing); the first one is also the pose / style reference
+  const MAX_REFS = 10;
+  function showRefs() {
+    S.ref = S.refs[0] || null; const box = $('attach'); box.hidden = !S.refs.length; box.innerHTML = '';
+    S.refs.forEach((src, k) => {
+      const d = document.createElement('figure'); d.className = 'att';
+      d.innerHTML = `<img alt="Image ${k + 1}"><figcaption>Image ${k + 1}</figcaption><button type="button" aria-label="Remove image ${k + 1}">×</button>`;
+      d.querySelector('img').src = src; d.querySelector('button').onclick = () => { S.refs.splice(k, 1); showRefs(); };
+      box.appendChild(d);
+    });
+    renderPanel();
+  }
+  $('refIn').onchange = async () => {
+    const files = [...$('refIn').files].filter(f => f.type.startsWith('image/')); $('refIn').value = '';
+    for (const f of files) {
+      if (S.refs.length >= MAX_REFS) { toast('Up to 10 reference photos.'); break; }
+      const src = await new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(f); });
+      S.refs.push((await normalise(src)).src);
+    }
+    showRefs();
+    toast(S.refs.length > 1 ? `Refer to them as image 1 to image ${S.refs.length}, e.g. “put the lamp from image 2 on the table”.`
+      : 'Refer to it as image 1, e.g. “use the jacket from image 1”, “pose like image 1”, “in the style of image 1”.');
+  };
 
   // open / drop a photo
   const readFile = f => { if (!f || !f.type.startsWith('image/')) return toast('That is not an image.'); const r = new FileReader(); r.onload = () => openPhoto(r.result, f.name); r.readAsDataURL(f); };
@@ -992,30 +1090,40 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
   const ctx = $('ctx');
   const SWATCHES = [['Amber', '#a8741f'], ['Olive', '#555934'], ['Wine', '#7b2f35'], ['Navy', '#2f4f7b'], ['Teal', '#2f6f63'], ['Blush', '#d9a3a0'], ['Black', '#1d1d1b'], ['White', '#f4f1ea']];
   const trend = { items: [], sources: [], topic: '', forPhoto: false, date: '', cached: false };
+  const sug = { items: [], generic: false, img: null };
   let upScale = 2;
-  let rc = { colour: '#2f4f7b', hue: 215 }, ideas = [], idea = -1, expandRatio = '16:9', seenIdeas = [], addBox = null, addOwn = '';
+  let rc = { colour: '#2f4f7b', hue: 215 }, ideas = [], idea = -1, expandRatio = '16:9', exW = 21, exH = 9, exGrow = 25, seenIdeas = [], addBox = null, addOwn = '';
   const SCENES = { studio: 'Studio podium', marble: 'Marble counter', cafe: 'Café table', nature: 'Forest stream', luxury: 'Black velvet', beach: 'Beach' };
   const STYLE_NAMES = { watercolour: 'Watercolour', oil: 'Oil painting', anime: 'Anime', pencil: 'Pencil sketch', popart: 'Pop art', clay: 'Clay 3D', film: '70s film' };
   const LIGHT_NAMES = { left: 'From the left', right: 'From the right', top: 'Studio top light', golden: 'Golden hour', blue: 'Blue hour', neon: 'Neon night', dim: 'Dim lamp' };
-  const prod = { scene: 'studio', words: '' }, sty = { preset: 'watercolour', strength: 85 }, lit = { light: 'left', words: '' };
+  const ARTWORKS = [['108700','Baroque Drama'],['324310','Impressionist'],['422652','Renaissance'],['423786','Golden Glow'],['428771','Modernist'],['436348','Romanticism'],['644443','Post-Impression'],['673478','Fine Canvas'],['688916','Pastel Dream'],['733367','Impasto Depth'],['753342','Neo-Classical'],['786051','Lyrical Tone'],['81842','Vintage Fresco'],['828002','Fauvist Palette'],['83995','Egg Tempera'],['851497','Royal Velvet'],['85343','Sunlight Mist'],['856047','Chromatic Vigor'],['86092','Charcoal Noir'],['863449','High Renaissance'],['868625','Palatial Fresco'],['881100','Surrealist Vision'],['884203','Museum Classic'],['884561','Luminist Sky'],['888440','Grand Portrait'],['933391','Terracotta Ochre'],['972994','Nocturne Indigo']];
+  const prod = { scene: 'studio', words: '' }, sty = { preset: 'art:' + ARTWORKS[0][0], strength: 85, engine: 'magenta' }, lit = { light: 'left', words: '', engine: 'transfer' }, e3d = { engine: 'spar3d' };
   let genDraft = '';
   const refBox = msg => S.ref ? `<div class="refbox"><img src="${S.ref}" alt="Reference photo"><span>Reference photo</span><button class="btn sm line" data-a="addref">Change</button></div>`
     : `<div class="refbox"><span>${msg}</span><button class="btn sm line" data-a="addref">Add photo</button></div>`;
-  const panelHead = (t, extra = '') => `<h2>${t} <span class="muted">${extra}</span><button class="ghost x" type="button" aria-label="Close panel">×</button></h2>`;
+  const panelHead = (t, extra = '') => `<div class="sheet-grip" title="Drag to resize the panel" aria-hidden="true"></div><h2>${t} <span class="muted">${extra}</span><button class="ghost mini-b" type="button" aria-label="Make the panel smaller" title="Smaller / larger panel">–</button><button class="ghost x" type="button" aria-label="Close panel">×</button></h2>`;
   const PANELS = {
     select: () => `${panelHead('Select')}<p class="muted">Click an object, or drag a box around it (only what is inside the box is selected). Shift-click adds more, Alt-click (or right-click) takes a part away. Your next edit then stays inside the selection.</p>
       <div class="selinfo"></div><div class="panel-actions"><button class="btn sm line" data-a="clear">Clear selection</button></div>`,
     remove: () => `${panelHead('Remove')}<p class="muted">Click the thing to remove, then press Remove. Its shadow goes too. You can also just type “remove the …”.</p>
       <div class="selinfo"></div><div class="panel-actions"><button class="btn sm" data-a="remove" data-need="sel">Remove</button><button class="btn sm line" data-a="clear">Clear</button></div>`,
     expand: () => `${panelHead('Expand')}<p class="muted">Grow the frame. New edges are painted to match your photo; the original stays as it is.</p>
-      <div class="row">${['16:9', '4:3', '3:2', '1:1', '4:5', '9:16'].map(r => `<button class="chip" data-r="${r}" aria-pressed="${r === expandRatio}">${r}</button>`).join('')}<button class="chip" data-r="grow" aria-pressed="${expandRatio === 'grow'}">+25% all round</button></div>
+      <div class="row">${['16:9', '4:3', '3:2', '1:1', '4:5', '9:16'].map(r => `<button class="chip" data-r="${r}" aria-pressed="${r === expandRatio}">${r}</button>`).join('')}<button class="chip" data-r="custom" aria-pressed="${expandRatio === 'custom'}">Custom ratio</button><button class="chip" data-r="grow" aria-pressed="${expandRatio === 'grow'}">Grow all round</button></div>
+      <div class="row ex-custom" ${expandRatio === 'custom' ? '' : 'hidden'}><label class="muted" for="exW">Width</label><input class="field num" id="exW" type="number" min="1" max="100" step="0.1" value="${exW}">
+        <span aria-hidden="true">:</span><label class="muted" for="exH">Height</label><input class="field num" id="exH" type="number" min="1" max="100" step="0.1" value="${exH}"></div>
+      <div class="ex-grow" ${expandRatio === 'grow' ? '' : 'hidden'}><label class="muted" for="exG">Grow each side by <b id="exGv">${exGrow}%</b></label>
+        <input type="range" id="exG" min="5" max="100" step="5" value="${exGrow}"></div>
       <div class="panel-actions"><button class="btn sm" data-a="expand">Expand</button></div>`,
     recolour: () => `${panelHead('Recolour')}<p class="muted">Click the object, pick a colour, then drag the shade. Only the object changes, its shading stays.</p>
       <div class="swatches" role="group" aria-label="Colours">${SWATCHES.map(([n, c]) => `<button class="sw" style="background:${c}" aria-label="${n}" data-c="${c}" aria-pressed="${c === rc.colour}"></button>`).join('')}</div>
       <label class="muted" for="hue">Shade</label><input type="range" id="hue" min="0" max="359" value="${rc.hue}"><div class="hue-track" aria-hidden="true"></div>
-      <input class="field" id="rcWhat" placeholder="…or name it, like “the backpack”">
       <div class="selinfo"></div><div class="panel-actions"><button class="btn sm" data-a="recolour">Recolour</button><button class="btn sm line" data-a="clear">Clear</button></div>`,
-    '3d': () => `${panelHead('View in 3D')}<p class="muted">Turns the selected object (or the main subject, if nothing is selected) into a 3D model you can spin and download. Takes 1–3 minutes.</p>
+    '3d': () => `${panelHead('View in 3D')}<p class="muted">Turns the selected object (or the main subject, if nothing is selected) into a 3D model you can spin and download.</p>
+      ${S.placed && S.placed.at === S.cur ? `<div class="placed-box"><p class="muted"><b>Placed object.</b> Turn or resize it to fit the frame.</p>
+        <div class="range-row"><span>Rotate</span><input type="range" id="plRot" min="-180" max="180" value="${S.placed.angle}"><output id="plRotO">${S.placed.angle}°</output></div>
+        <div class="range-row"><span>Size</span><input type="range" id="plSize" min="40" max="160" value="${Math.round(S.placed.scale * 100)}"><output id="plSizeO">${Math.round(S.placed.scale * 100)}%</output></div>
+        <div class="panel-actions"><button class="btn sm line" data-a="placedReset">Reset</button><button class="btn sm" data-a="placedDone">Done</button></div></div>` : ''}
+      <div class="row">${[['spar3d', 'SPAR3D (fuller shapes)'], ['sf3d', 'SF3D (fast)']].map(([k, n]) => `<button class="chip" data-e3="${k}" aria-pressed="${e3d.engine === k}">${n}</button>`).join('')}</div>
       <label class="tick"><input type="checkbox" id="complete3d" checked> Complete parts that are hidden or cut off</label>
       <div class="selinfo"></div><div class="panel-actions"><button class="btn sm" data-a="view3d">Make 3D model</button><button class="btn sm line" data-a="last3d" data-off="${lastGlb ? 0 : 1}" ${lastGlb ? '' : 'disabled'}>Open last model</button></div>`,
     ideas: () => `${panelHead('Ideas')}<p class="muted">Things that would suit this photo. Pick one: the AI finds a spot and a realistic size. Drag the box to move it, drag its corner to resize, then add it.</p>
@@ -1037,7 +1145,8 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
       <div class="row">${[2, 4].map(k => `<button class="chip" data-up="${k}" aria-pressed="${k === upScale}">${k}× larger</button>`).join('')}</div>
       <div class="selinfo">${cur() ? `Now ${cur().w}×${cur().h} → ${Math.min(4096, cur().w * upScale)}×${Math.round(Math.min(4096, cur().w * upScale) * cur().h / cur().w)}` : ''}</div>
       <div class="panel-actions"><button class="btn sm" data-a="upscale">Upscale</button></div>`,
-    brush: () => `${panelHead('Brush')}<p class="muted">Paint over the area you want to change. Hold Alt (Option) to erase. Then type your edit below: it stays inside what you painted. Remove and Recolour use it too.</p>
+    brush: () => `${panelHead('Brush')}<p class="muted">Paint over the area you want to change. Then type your edit below: it stays inside what you painted. Remove and Recolour use it too.</p>
+      <label class="tick"><input type="checkbox" id="brushSam" ${brushSam ? 'checked' : ''}> Snap to the object (SAM)</label>
       <div class="range-row"><span>Size</span><input type="range" id="brushSize" min="8" max="160" value="${brushSize}"><output id="brushOut">${brushSize}px</output></div>
       <div class="selinfo"></div><div class="panel-actions"><button class="btn sm line" data-a="clear">Clear</button></div>`,
     move: () => `${panelHead('Move')}<p class="muted">Click the object (or drag a box around it), then drag it to its new place. The spot it leaves is filled in to match the scene.</p>
@@ -1047,13 +1156,13 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
       <textarea class="field" id="genText" rows="3" placeholder="a cozy reading nook at dusk, warm lamp light">${esc(genDraft)}</textarea>
       <div class="row">${Object.keys(GEN_RATIOS).map(r => `<button class="chip" data-gr="${r}" aria-pressed="${r === genRatio}">${r}</button>`).join('')}</div>
       <div class="panel-actions"><button class="btn sm" data-a="create">Create</button></div>`,
-    product: () => `${panelHead('Product shot')}<p class="muted">Puts your product in a new scene and keeps it exact: shape, colours and logo. Works best on a clear product photo or a cut-out.</p>
-      <div class="row">${Object.entries(SCENES).map(([k, n]) => `<button class="chip" data-sc="${k}" aria-pressed="${k === prod.scene && !prod.words}">${n}</button>`).join('')}</div>
-      <input class="field" id="prodWords" placeholder="…or describe a scene, like “on a snowy windowsill”" value="${esc(prod.words)}">
-      <div class="panel-actions"><button class="btn sm" data-a="product">Make product shot</button></div>`,
+    product: () => `${panelHead('Product shot')}<p class="muted">Shows your product from four angles: 45° left, side, back and top. Works best on a clear product photo or a cut-out.</p>
+      <div class="panel-actions"><button class="btn sm" data-a="angles">Make 4 angles</button></div>
+      <p class="tip">Made with Lumen 1.1 – Lumina. The four views appear in Variations; tap one to use it.</p>`,
     style: () => `${panelHead('Style')}<p class="muted">Repaint the photo in a new style. Everything stays where it is; only the look changes.</p>
-      <div class="row">${Object.entries(STYLE_NAMES).map(([k, n]) => `<button class="chip" data-st="${k}" aria-pressed="${k === sty.preset}">${n}</button>`).join('')}
-        <button class="chip" data-st="ref" aria-pressed="${sty.preset === 'ref'}" ${S.ref ? '' : 'disabled'}>My reference photo</button></div>
+      <p class="muted" style="margin-top:10px">Artworks</p>
+      <div class="arts">${ARTWORKS.map(([id, n]) => `<button class="art" data-art="${id}" aria-pressed="${sty.preset === 'art:' + id}" title="${n}"><img src="assets/artworks/${id}.jpg" alt="${n}" loading="lazy"><span>${n}</span></button>`).join('')}</div>
+      <div class="row" style="margin-top:10px"><button class="chip" data-st="ref" aria-pressed="${sty.preset === 'ref'}" ${S.ref ? '' : 'disabled'}>Use my reference photo</button></div>
       ${refBox('Add a painting or photo whose style you like')}
       <div class="range-row"><span>Strength</span><input type="range" id="styStrength" min="40" max="100" value="${sty.strength}"><output id="styOut">${sty.strength}%</output></div>
       <div class="panel-actions"><button class="btn sm" data-a="style">Apply style</button></div>`,
@@ -1068,8 +1177,13 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
       <div class="row">${Object.entries(LAYOUTS).map(([k, n]) => `<button class="chip" data-cl="${k}" aria-pressed="${k === col.layout}">${n}</button>`).join('')}</div>
       <div class="range-row"><span>Spacing</span><input type="range" id="colGap" min="0" max="48" value="${col.gap}"><output id="colOut">${col.gap}</output></div>
       <div class="swatches">${BGS.map(([n, c]) => `<button class="sw" style="background:${c}" aria-label="${n} background" data-cb="${c}" aria-pressed="${c === col.bg}"></button>`).join('')}</div>
-      <div class="panel-actions"><button class="btn sm" data-a="collage" data-need="collage">Make collage</button></div>`,
+      <div class="panel-actions"><button class="btn sm" data-a="collage" data-need="collage">Make collage</button></div>
+      <p class="muted" style="margin-top:14px"><b>Auto design (AI)</b>: picks the best photos and lays out three Instagram designs.</p>
+      <input class="field" id="colPrompt" placeholder="Theme, e.g. “summer trip with friends”" value="${esc(col.prompt)}">
+      <div class="panel-actions"><button class="btn sm line" data-a="autoCollage" data-need="collage">Auto design</button></div>
+      <div class="thumbs">${col.designs.map((d, i) => `<div class="th"><img src="${d.image}" alt="${d.style} design" data-design="${i}" style="cursor:pointer"></div>`).join('')}</div>`,
     relight: () => `${panelHead('Relight')}<p class="muted">Change where the light comes from and its mood. Faces, text and textures keep every detail.</p>
+      <div class="row">${[['transfer', 'Light transfer'], ['iclight', 'IC-Light (AI)']].map(([k, n]) => `<button class="chip" data-le="${k}" aria-pressed="${lit.engine === k}">${n}</button>`).join('')}</div>
       <div class="row">${Object.entries(LIGHT_NAMES).map(([k, n]) => `<button class="chip" data-lt="${k}" aria-pressed="${k === lit.light && !lit.words}">${n}</button>`).join('')}</div>
       <input class="field" id="litWords" placeholder="…or describe it, like “soft window light from the right”" value="${esc(lit.words)}">
       <div class="panel-actions"><button class="btn sm" data-a="relight">Relight</button></div>`,
@@ -1083,16 +1197,38 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
       <div class="selinfo"></div>
       <div class="panel-actions"><button class="btn sm" data-a="dolly">Make video</button><button class="btn sm line" data-a="lastDolly" data-off="${lastLayers ? 0 : 1}" ${lastLayers ? '' : 'disabled'}>Open last</button></div>
       <p class="tip">Click the subject first if the wrong thing is picked.</p>`,
-    history: () => `${panelHead('History')}<p class="muted">Every step is kept. Click a step in the list to go back to it; your next edit continues from there. Ctrl+Z and Ctrl+Shift+Z also work.</p>
+    glow: () => `${panelHead('Glow light')}<p class="muted">Click on the photo where the light should be. It shines from that point and follows the shapes of the scene (depth).</p>
+      <div class="swatches">${GLOWS.map(([n, c]) => `<button class="sw" style="background:${c}" aria-label="${n}" data-gc="${c}" aria-pressed="${c === gl.colour}"></button>`).join('')}</div>
+      <div class="row">${[['spread', 'Lamp'], ['spot', 'Spotlight']].map(([k, n]) => `<button class="chip" data-gm="${k}" aria-pressed="${gl.mode === k}">${n}</button>`).join('')}</div>
+      <div class="range-row"><span>Strength</span><input type="range" id="glInt" min="10" max="100" value="${gl.intensity}"><output id="glIntO">${gl.intensity}</output></div>
+      <div class="range-row"><span>Size</span><input type="range" id="glSize" min="10" max="120" value="${Math.round(gl.size * 100)}"><output id="glSizeO">${Math.round(gl.size * 100)}</output></div>
+      <label class="tick"><input type="checkbox" id="glLive" ${GL.on ? 'checked' : ''}> Live preview: the light follows your cursor</label>
+      <p class="tip">${cur() && cur().glowId ? 'Move over the photo to preview the light; click to place it there. Sliders and colours update it.' : 'Your first click adds the light; after that it follows your cursor as a live preview.'}</p>`,
+    suggest: () => `${panelHead('Suggestions')}<p class="muted">The AI looks at the objects in your photo and suggests what to remove, add, replace or move. Tap one to try it; undo takes you back.</p>
+      <div class="panel-actions"><button class="btn sm ${sug.items.length ? 'line' : ''}" data-a="suggest">${sug.items.length ? 'More suggestions' : 'Get suggestions'}</button></div>
+      <div class="ideas-list">${sug.items.map((t, i) => `<div class="idea trend"><b><span class="kind k-${esc(t.kind || 'edit')}">${esc({ remove: 'Remove', add: 'Add', replace: 'Replace', move: 'Move', recolour: 'Recolour', look: 'Look' }[t.kind] || 'Edit')}</span>${esc(t.title)}</b><small>${esc(t.why || t.prompt)}</small>
+        <button class="btn sm" data-sg="${i}">Try it</button></div>`).join('')}</div>
+      ${sug.generic ? '<p class="muted src">The AI could not read this photo, so these are general ideas.</p>' : ''}`,
+    variations: () => `${panelHead('Variations')}<p class="muted">Other versions of your last edit, and the four product angles. Tap one to use it.</p><div class="slot" data-slot="varsBox"></div>`,
+    history: () => `${panelHead('History')}<p class="muted">Every step is kept. Tap a step to go back to it; your next edit continues from there. Ctrl+Z and Ctrl+Shift+Z also work.</p><div class="slot" data-slot="histBox"></div>
       <div class="panel-actions"><button class="btn sm line" data-a="revert">Revert to original</button></div>`,
   };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const narrow = () => matchMedia('(max-width: 1100px)').matches;
   function renderPanel() {
+    ['varsBox', 'histBox'].forEach(id => { const el = $(id); if (el && el.parentElement !== side) side.appendChild(el); });
+    if (S.tool === 'suggest' && sug.img !== (cur() && cur().img) && sug.img) { sug.items = []; sug.img = null; }
     ctx.innerHTML = PANELS[S.tool]();
+    ctx.querySelectorAll('[data-slot]').forEach(sl => { if (narrow()) sl.appendChild($(sl.dataset.slot)); });
+    ctx.querySelector('.mini-b').onclick = () => { const m = $('app').classList.toggle('sheet-mini'); ctx.querySelector('.mini-b').textContent = m ? '+' : '–'; };
+    ctx.querySelector('.mini-b').textContent = $('app').classList.contains('sheet-mini') ? '+' : '–';
+    sheetGrip(ctx.querySelector('.sheet-grip'));
+    ctx.querySelectorAll('[data-sg]').forEach(b => b.onclick = () => { const t = sug.items[+b.dataset.sg]; if (!t || busy) return; $('promptInput').value = t.prompt; doEdit(t.prompt); });
     ctx.querySelectorAll('[data-a]').forEach(b => b.onclick = () => ACTIONS[b.dataset.a]());
     ctx.querySelector('.x').onclick = () => $('app').classList.remove('panel-open');
     ctx.querySelectorAll('[data-up]').forEach(b => b.onclick = () => { upScale = +b.dataset.up; renderPanel(); });
-    ctx.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { expandRatio = b.dataset.r; ctx.querySelectorAll('[data-r]').forEach(o => o.setAttribute('aria-pressed', o === b)); });
+    ctx.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { expandRatio = b.dataset.r; ctx.querySelectorAll('[data-r]').forEach(o => o.setAttribute('aria-pressed', o === b));
+      const c = ctx.querySelector('.ex-custom'), g = ctx.querySelector('.ex-grow'); if (c) c.hidden = expandRatio !== 'custom'; if (g) g.hidden = expandRatio !== 'grow'; });
     ctx.querySelectorAll('.sw').forEach(b => b.onclick = () => { rc.colour = b.dataset.c; rc.hue = hexHue(rc.colour); renderPanel(); if (busy) return; if (S.rcId) shade(); else if (S.sel) ACTIONS.recolour(); });
     const hue = $('hue');
     if (hue) { hue.oninput = () => { rc.hue = +hue.value; rc.colour = hueHex(rc.hue, rc.colour); ctx.querySelectorAll('.sw').forEach(o => o.setAttribute('aria-pressed', 'false')); };
@@ -1117,6 +1253,25 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
     on('[data-cb]', b => { col.bg = b.dataset.cb; renderPanel(); });
     on('[data-rm]', b => { col.photos.splice(+b.dataset.rm, 1); renderPanel(); });
     on('[data-dm]', b => { dollyMove = b.dataset.dm; renderPanel(); });
+    on('[data-art]', b => { sty.preset = 'art:' + b.dataset.art; renderPanel(); });
+    on('[data-le]', b => { lit.engine = b.dataset.le; renderPanel(); });
+    on('[data-e3]', b => { e3d.engine = b.dataset.e3; renderPanel(); });
+    on('[data-se]', b => { sty.engine = b.dataset.se; renderPanel(); });
+    if ($('glLive')) $('glLive').onchange = () => { GL.on = $('glLive').checked; if (!GL.on) GL.cv.hidden = true; };
+    if ($('plRot')) {
+      $('plRot').oninput = () => { S.placed.angle = +$('plRot').value; $('plRotO').textContent = S.placed.angle + '°'; recompose(); };
+      $('plSize').oninput = () => { S.placed.scale = $('plSize').value / 100; $('plSizeO').textContent = $('plSize').value + '%'; recompose(); };
+    }
+    on('[data-gc]', b => { gl.colour = b.dataset.gc; renderPanel(); if (cur() && cur().glowId) glowAt(); });
+    on('[data-gm]', b => { gl.mode = b.dataset.gm; renderPanel(); if (cur() && cur().glowId) glowAt(); });
+    slide('glInt', 'glIntO', v => v, v => gl.intensity = v, () => { if (cur() && cur().glowId) glowAt(); });
+    slide('glSize', 'glSizeO', v => v, v => gl.size = v / 100, () => { if (cur() && cur().glowId) glowAt(); });
+    if ($('brushSam')) $('brushSam').onchange = () => brushSam = $('brushSam').checked;
+    if ($('colPrompt')) $('colPrompt').oninput = () => col.prompt = $('colPrompt').value;
+    if ($('exW')) { $('exW').oninput = () => exW = +$('exW').value; $('exH').oninput = () => exH = +$('exH').value;
+      $('exG').oninput = () => { exGrow = +$('exG').value; $('exGv').textContent = exGrow + '%'; }; }
+    ctx.querySelectorAll('[data-design]').forEach(im => im.onclick = async () => { const d = col.designs[+im.dataset.design]; S.last = null;
+      if (cur()) await push({ image: d.image }, 'Auto collage: ' + d.style); else await openPhoto(d.image, 'Collage'); });
     const bind = (id, set) => { const el = $(id); if (el) el.oninput = () => set(el.value); };
     bind('genText', v => genDraft = v); bind('prodWords', v => prod.words = v); bind('litWords', v => lit.words = v);
     if ($('colCur')) $('colCur').onchange = () => { col.useCur = $('colCur').checked; renderPanel(); };
@@ -1198,8 +1353,63 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
   }
   $('revertBtn').onclick = revert;
 
-  let lastGlb = null;
+  let lastGlb = null, lastObj = null;
+  // capture the 3-D object from the current angle and put it into the photo where the original object was
+  async function useView() {
+    if (!three || !three.obj || busy) return;
+    if (!lastObj || !lastObj.mask) return toast('Build the 3D model from the photo first.');
+    three.renderer.render(three.scene, three.cam);
+    const view = three.renderer.domElement.toDataURL('image/png');
+    $('v3d').close();
+    const base = lastObj.at < S.hist.length ? lastObj.at : S.cur;
+    if (base !== S.cur) go(base);
+    const r = await act('replace3d', 'replace-object', { mask: lastObj.mask, view }, 'Object turned (from 3D)', { variable: false });
+    if (r && r.plate && r.placed) {
+      S.placed = { ...r.placed, plate: r.plate, angle: 0, scale: 1, at: S.cur };
+      document.querySelector('.tool[data-tool="3d"]').click();
+      toast('Placed. Use Rotate and Size in the panel to fit it into the frame.');
+    }
+  }
+  // rotate / resize the placed object on the client: plate + view, redrawn into the same history step
+  let recTick = 0;
+  async function recompose() {
+    const P = S.placed; if (!P || P.at !== S.cur || !cur()) return;
+    const t = ++recTick;
+    P._pl = P._pl || await loadImg(P.plate); P._vw = P._vw || await loadImg(P.view);
+    if (t !== recTick) return;
+    requestAnimationFrame(() => {
+      const c = document.createElement('canvas'); c.width = P._pl.naturalWidth; c.height = P._pl.naturalHeight;
+      const g = c.getContext('2d'); g.drawImage(P._pl, 0, 0);
+      g.save(); g.translate(P.cx, P.cy); g.rotate(P.angle * Math.PI / 180);
+      const w = P.w * P.scale, h = P.h * P.scale; g.imageSmoothingQuality = 'high'; g.drawImage(P._vw, -w / 2, -h / 2, w, h); g.restore();
+      cur().img = c.toDataURL('image/jpeg', .95); render();
+    });
+  }
+  const side = document.querySelector('.side');
+  try { const h = +store.get('lumen.sheetH'); if (h > 80) side.style.setProperty('--sheet-h', h + 'px'); } catch (e) {}
+  function sheetGrip(g) {
+    if (!g) return;
+    g.onpointerdown = e => {
+      e.preventDefault(); g.setPointerCapture(e.pointerId); $('app').classList.remove('sheet-mini');
+      const y0 = e.clientY, h0 = side.getBoundingClientRect().height;
+      g.onpointermove = ev => { const h = Math.max(110, Math.min(innerHeight * .88, h0 + (y0 - ev.clientY))); side.style.setProperty('--sheet-h', h + 'px'); };
+      g.onpointerup = () => { g.onpointermove = g.onpointerup = null; const h = parseFloat(side.style.getPropertyValue('--sheet-h')); if (h) store.set('lumen.sheetH', String(Math.round(h)));
+        const mb = ctx.querySelector('.mini-b'); if (mb) mb.textContent = '–'; };
+    };
+  }
   const ACTIONS = {
+    placedReset: () => { if (!S.placed) return; S.placed.angle = 0; S.placed.scale = 1; recompose(); renderPanel(); },
+    placedDone: () => { S.placed = null; renderPanel(); toast('Object placed.'); },
+    suggest: async () => {
+      if (busy || !cur()) return;
+      setBusy(true); run('suggest', 'Suggestions for this photo');
+      try {
+        const r = await call('suggest', { image: cur().img, n: 6, avoid: sug.items.map(x => x.title) });
+        Object.assign(sug, { items: r.suggestions || [], generic: !!r.generic, img: cur().img });
+        S.last = null; finish({ ...r, route: 'suggest', checks: [] }, 'suggest'); renderPanel();
+      } catch (e) { fail(e.message, ACTIONS.suggest); }
+      setBusy(false); renderPanelState();
+    },
     clear: clearSel,
     revert: () => revert(),
     upscale: () => act('upscale', 'upscale-ai', { scale: upScale }, `Upscaled ${upScale}×`, { variable: false }).then(() => renderPanel()),
@@ -1218,14 +1428,17 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
     },
     remove: () => act('remove', 'edit', { prompt: 'remove the selected object', mask: S.sel.mask }, 'Removed the selection')
       .then(r => { if (r) clearSel(); }),
-    expand: () => expandRatio === 'grow' ? doExpand(null, .25) : doExpand(expandRatio),
+    expand: () => {
+      if (expandRatio === 'grow') return doExpand(null, exGrow / 100);
+      if (expandRatio !== 'custom') return doExpand(expandRatio);
+      if (!(exW > 0 && exH > 0) || exW / exH > 4 || exH / exW > 4) return toast('Use a ratio between 1:4 and 4:1, like 21:9.');
+      return doExpand(`${+exW.toFixed(2)}:${+exH.toFixed(2)}`);
+    },
     recolour: () => {
-      const what = ($('rcWhat') && $('rcWhat').value.trim().replace(/^the\s+/i, '')) || '';
-      if (!S.sel && !what) return selInfo('Click the object first, or type its name.');
-      if (S.sel && what) toast('Using your selection (clear it to recolour by name instead).');
+      if (!S.sel) return selInfo('Click the object first.');
       const name = SWATCHES.find(s => s[1] === rc.colour);
-      act('recolour', 'recolour', { colour: rc.colour, mask: S.sel ? S.sel.mask : undefined, object: what },
-          `${S.sel || !what ? 'Selection' : what[0].toUpperCase() + what.slice(1)} made ${name ? name[0].toLowerCase() : rc.colour}`, { variable: false });
+      act('recolour', 'recolour', { colour: rc.colour, mask: S.sel.mask },
+          `Selection made ${name ? name[0].toLowerCase() : rc.colour}`, { variable: false });
     },
     view3d: () => view3d(),
     last3d: () => lastGlb && showGlb(lastGlb),
@@ -1252,14 +1465,40 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
     create: () => { const t = ($('genText') ? $('genText').value : genDraft).trim(); if (!t) return toast('Describe the image first.'); doGenerate(t, true); },
     product: () => { const w = prod.words.trim(); act('product', 'product', { scene: prod.scene, words: w }, 'Product shot: ' + (w || SCENES[prod.scene].toLowerCase())); },
     style: () => {
+      if (sty.preset.startsWith('art:')) {
+        const id = sty.preset.slice(4), nm = (ARTWORKS.find(a => a[0] === id) || [id, id])[1];
+        return fetch(`assets/artworks/${id}.jpg`).then(r => r.blob()).then(b => new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b); }))
+          .then(src => act('style', 'style', { reference: src, engine: sty.engine, strength: sty.strength / 100 }, 'Style: ' + nm));
+      }
       if (sty.preset === 'ref' && !S.ref) return toast('Add a reference photo first.');
-      const p = sty.preset === 'ref' ? { reference: S.ref, strength: sty.strength / 100 } : { preset: sty.preset, strength: sty.strength / 100 };
+      const p = sty.preset === 'ref' ? { reference: S.ref, engine: sty.engine, strength: sty.strength / 100 } : { preset: sty.preset, strength: sty.strength / 100 };
       act('style', 'style', p, 'Style: ' + (sty.preset === 'ref' ? 'from the reference' : STYLE_NAMES[sty.preset].toLowerCase()));
     },
     pose: () => S.ref && act('pose', 'pose', { reference: S.ref }, 'Pose from the reference'),
     colAdd: () => $('multiIn').click(),
+    autoCollage: async () => {
+      if (busy) return; const imgs = colSrcs(); if (imgs.length < 2) return toast('Add at least two photos.');
+      setBusy(true); run('collage', col.prompt.trim() || 'Auto collage');
+      try { const r = await call('auto-collage', { images: imgs, prompt: col.prompt.trim(), size: 'post' }, 10 * 60 * 1000);
+        col.designs = r.designs || []; S.last = null; finish({ ...r, route: 'collage' }, 'collage'); toast('Three designs are ready in the panel. Click one to use it.'); }
+      catch (e) { fail(e.message, ACTIONS.autoCollage); }
+      setBusy(false); renderPanel();
+    },
+    angles: async () => {
+      if (busy || !cur()) return;
+      setBusy(true); run('angles', 'Product from 4 angles');
+      try {
+        const base = S.cur, r = await call('product-angles', { image: cur().img, model: 'flash', seed: SEED });
+        const a = r.angles || []; if (!a.length) throw new Error('No angles came back.');
+        S.last = { kind: 'product', path: 'product', payload: { scene: prod.scene, words: prod.words }, label: 'Product shot', base, seed: SEED, model: 'flash', variable: false };
+        await push({ image: a[0].image }, 'Product angles: ' + a[0].angle);
+        S.vars = a.map((x, i) => ({ img: x.image, seed: SEED + i })); render(); finish({ ...r, route: 'product' }, 'angles');
+        if (narrow()) document.querySelector('.tool[data-tool="variations"]').click(); else toast('Four angles are in Variations; click one to use it.');
+      } catch (e) { fail(e.message, ACTIONS.angles); }
+      setBusy(false); renderPanelState();
+    },
     collage: () => makeCollage(),
-    relight: () => { const w = lit.words.trim(); act('relight', 'relight', { light: lit.light, words: w }, 'Relight: ' + (w || LIGHT_NAMES[lit.light].toLowerCase())); },
+    relight: () => { const w = lit.words.trim(); act('relight', 'relight', { light: lit.light, words: w, engine: lit.engine === 'iclight' ? 'iclight' : '' }, 'Relight: ' + (w || LIGHT_NAMES[lit.light].toLowerCase()) + (lit.engine === 'iclight' ? ' (IC-Light)' : '')); },
     bokeh: () => act('bokeh', 'bokeh', { strength: bk.strength / 100, mask: S.sel ? S.sel.mask : undefined }, 'Portrait bokeh', { variable: false })
       .then(r => { if (r) { cur().bokehId = r.bokeh_id; cur().bokehPoint = null; if (S.sel) clearSel(); renderPanel(); } }),
     dolly: async () => {
@@ -1279,8 +1518,8 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
     const label = S.sel ? '3D model of the selection' : '3D model of the main subject';
     setBusy(true); run('view3d', label);
     try {
-      const r = await call('view3d', { image: cur().img, mask: S.sel ? S.sel.mask : undefined, complete: $('complete3d') ? $('complete3d').checked : true }, 30 * 60 * 1000);
-      S.last = null; finish(r, 'view3d'); lastGlb = r.glb; renderPanel(); showGlb(r.glb);
+      const r = await call('view3d', { image: cur().img, mask: S.sel ? S.sel.mask : undefined, complete: $('complete3d') ? $('complete3d').checked : true, engine: e3d.engine }, 30 * 60 * 1000);
+      S.last = null; finish(r, 'view3d'); lastGlb = r.glb; lastObj = { mask: r.mask, at: S.cur }; renderPanel(); showGlb(r.glb);
     } catch (e) { fail(e.message, view3d); }
     setBusy(false); renderPanelState();
   }
@@ -1299,7 +1538,7 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
       if (!THREE.OrbitControls) await loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js');
     } catch (e) { load.textContent = e.message; return; }
     if (!three) {
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
       renderer.outputEncoding = THREE.sRGBEncoding; renderer.setPixelRatio(Math.min(2, devicePixelRatio));
       view.prepend(renderer.domElement);
       const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(35, 1, 0.01, 100);
@@ -1322,10 +1561,11 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
     }, () => { load.textContent = 'This model could not be opened.'; });
   }
   $('v3dClose').onclick = () => $('v3d').close();
+  $('useView').onclick = useView;
 
   // ---------------------------------------------------------------- brush: paint the area by hand (Alt erases)
   const brushCur = $('brushCur'), brushMask = document.createElement('canvas');
-  let brushSize = 40, stroke = null;                     // brushSize = diameter in screen pixels
+  let brushSize = 40, stroke = null, brushSam = true;                     // brushSize = diameter in screen pixels
   function brushRadius() { const r = canvas.getBoundingClientRect(); return brushSize / 2 * cur().w / r.width; }
   function showCursor(e) {
     const r = canvas.getBoundingClientRect();
@@ -1374,6 +1614,12 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
     const o = out.getContext('2d'); o.fillStyle = '#000'; o.fillRect(0, 0, c.w, c.h); o.drawImage(brushMask, 0, 0);
     S.sel = { mask: out.toDataURL('image/png'), points: [], box: [x0, y0, x1 + 1, y1 + 1], boxPrompt: null, area: n / (c.w * c.h), at: S.cur, brushed: true };
     S.rcId = null; S.move = null;
+    if (brushSam) {                      // SAM refines the painted area to the object's real outline
+      const pts = [], step = Math.max(1, Math.floor(n / 8));
+      for (let i = 0, k = 0; i < c.w * c.h && pts.length < 8; i++) if (d[i * 4 + 3] > 127 && (k++ % step === 0)) pts.push([i % c.w, Math.floor(i / c.w), 1]);
+      const px = Math.round(.04 * c.w), py = Math.round(.04 * c.h);
+      return segment(pts, [Math.max(0, x0 - px), Math.max(0, y0 - py), Math.min(c.w, x1 + px), Math.min(c.h, y1 + py)]);
+    }
     drawSel().then(() => selInfo(`Painted ${Math.max(1, Math.round(S.sel.area * 100))}% of the photo. Now type your edit, or use Remove / Recolour.`));
   }
 
@@ -1422,6 +1668,103 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
 
   // ---------------------------------------------------------------- bokeh: slider and click-to-refocus re-render on the server CPU (cached depth)
   const bk = { strength: 60 };
+  const GLOWS = [['Warm', '#ffb464'], ['Sun', '#ffe08a'], ['Cool', '#7fb4ff'], ['Pink', '#ff7ac8'], ['Red', '#ff4a3d'], ['Green', '#66ff99'], ['White', '#ffffff']];
+  const gl = { colour: '#ffb464', mode: 'spread', intensity: 65, size: .5, point: null };
+  async function glowAt(point) {
+    const c = cur(); if (!c || busy) return;
+    if (point) gl.point = point; if (!gl.point) return toast('Click on the photo where the light should be.');
+    const body = { point: gl.point, colour: gl.colour, mode: gl.mode, intensity: gl.intensity, size: gl.size, direction: 90 };
+    setBusy(true); run('glow', 'Glow light');
+    try {
+      let r;
+      if (c.glowId) { r = await call('glow-adjust', { ...body, glow_id: c.glowId }); await replaceCurrent(r); }
+      else { r = await call('glow', { ...body, image: c.img }); await push(r, 'Glow light'); cur().glowId = r.glow_id; if (r.live) { cur().glowLive = r.live; glowLiveSetup(r.live); } }
+      S.last = null; finish(r, 'glow');
+    } catch (e) { if (c.glowId) c.glowId = null; fail(e.message); }
+    setBusy(false); renderPanel();
+  }
+  // ---------------------------------------------------------------- live glow preview (WebGL)
+  // The same exposure-light formula as editing/depth_glow.py (reveal mode), drawn on the GPU under the cursor from the
+  // photo, its denoised copy and the depth map the first click returned. A click still renders the light on the server.
+  const GL = { cv: $('glowLive'), gl: null, prog: null, key: null, grid: null, on: true, pt: null, raf: 0 };
+  const VS = 'attribute vec2 p; varying vec2 uv; void main(){ uv = vec2((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5); gl_Position = vec4(p, 0.0, 1.0); }';
+  const FS = `precision highp float; varying vec2 uv;
+    uniform sampler2D photo, den, depth; uniform vec2 px, texel; uniform float size, soft, inten, gmax, mixv, spot, cosCut;
+    uniform vec3 colorLin, tint, dir;
+    vec3 s2l(vec3 c){ return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c)); }
+    vec3 l2s(vec3 c){ c = clamp(c, 0.0, 1.0); return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }
+    float sf(vec2 q){ return 1.0 - texture2D(depth, q).r; }
+    void main(){
+      float s = sf(uv);
+      float dzx = (sf(uv + vec2(texel.x, 0.0)) - sf(uv - vec2(texel.x, 0.0))) * 0.5 / texel.x;
+      float dzy = (sf(uv + vec2(0.0, texel.y)) - sf(uv - vec2(0.0, texel.y))) * 0.5 / texel.y;
+      vec3 n = normalize(vec3(-dzx * 0.25, -dzy * 0.25, -1.0));
+      vec2 d2 = px - uv; vec3 v = vec3(d2, -(s + 0.05)); float dist = length(v); vec3 ld = v / max(dist, 1e-6);
+      float e = clamp((size - length(d2)) / max(size * soft, 1e-6), 0.0, 1.0); float shape = e * e * (3.0 - 2.0 * e);
+      if (spot > 0.5) { float cw = clamp((dot(-ld, dir) - cosCut) / max((1.0 - cosCut) * soft, 1e-6), 0.0, 1.0); shape *= cw * cw * (3.0 - 2.0 * cw); }
+      float F = inten * shape * (0.35 + 0.65 * max(dot(n, ld), 0.0));
+      float g = pow(gmax, F) - 1.0;
+      vec3 lin = s2l(texture2D(photo, uv).rgb), dl = s2l(texture2D(den, uv).rgb);
+      vec3 lit = (lin + (dl - lin) * clamp(g / 24.0, 0.0, 0.75)) * (1.0 + g * tint) + 0.03 * F * colorLin;
+      lit = mix(lit, 0.8 + 0.2 * (1.0 - exp(-(lit - 0.8) / 0.2)), step(0.8, lit));
+      gl_FragColor = vec4(l2s(lin * (1.0 - mixv) + lit * mixv), 1.0);
+    }`;
+  const toLin = v => { v /= 255; return v <= .04045 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
+  const hexLin = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(toLin); };
+  async function glowLiveSetup(live) {
+    try {
+      const [ph, dn, dp] = await Promise.all([live.photo, live.den, live.depth].map(loadImg));
+      const cv = GL.cv; cv.width = ph.naturalWidth; cv.height = ph.naturalHeight;
+      const g = GL.gl || cv.getContext('webgl', { preserveDrawingBuffer: false, premultipliedAlpha: false });
+      if (!g) return;                                     // no WebGL: clicking still works
+      if (!GL.prog) {
+        const sh = (t, src) => { const o = g.createShader(t); g.shaderSource(o, src); g.compileShader(o); if (!g.getShaderParameter(o, g.COMPILE_STATUS)) throw new Error(g.getShaderInfoLog(o)); return o; };
+        const pr = g.createProgram(); g.attachShader(pr, sh(g.VERTEX_SHADER, VS)); g.attachShader(pr, sh(g.FRAGMENT_SHADER, FS)); g.linkProgram(pr);
+        g.useProgram(pr); const b = g.createBuffer(); g.bindBuffer(g.ARRAY_BUFFER, b);
+        g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), g.STATIC_DRAW);
+        const loc = g.getAttribLocation(pr, 'p'); g.enableVertexAttribArray(loc); g.vertexAttribPointer(loc, 2, g.FLOAT, false, 0, 0);
+        GL.gl = g; GL.prog = pr;
+      }
+      [ph, dn, dp].forEach((im, i) => {
+        const t = g.createTexture(); g.activeTexture(g.TEXTURE0 + i); g.bindTexture(g.TEXTURE_2D, t);
+        [g.TEXTURE_WRAP_S, g.TEXTURE_WRAP_T].forEach(k => g.texParameteri(g.TEXTURE_2D, k, g.CLAMP_TO_EDGE));
+        [g.TEXTURE_MIN_FILTER, g.TEXTURE_MAG_FILTER].forEach(k => g.texParameteri(g.TEXTURE_2D, k, g.LINEAR));
+        g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, g.RGBA, g.UNSIGNED_BYTE, im);
+        g.uniform1i(g.getUniformLocation(GL.prog, ['photo', 'den', 'depth'][i]), i);
+      });
+      g.uniform2f(g.getUniformLocation(GL.prog, 'texel'), 1 / dp.naturalWidth, 1 / dp.naturalHeight);
+      // 64x64 luminance grid of the denoised photo, for the same automatic exposure the server uses
+      const N = 64, c2 = document.createElement('canvas'); c2.width = c2.height = N; const x2 = c2.getContext('2d'); x2.drawImage(dn, 0, 0, N, N);
+      const px = x2.getImageData(0, 0, N, N).data; GL.grid = new Float32Array(N * N);
+      for (let i = 0; i < N * N; i++) GL.grid[i] = .2126 * toLin(px[4 * i]) + .7152 * toLin(px[4 * i + 1]) + .0722 * toLin(px[4 * i + 2]);
+      GL.key = live;
+    } catch (e) { console.warn('live glow preview off:', e); GL.key = null; }
+  }
+  function glowGmax(x, y) {
+    const N = 64, r0 = Math.max(gl.size * .6, .05), v = [];
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const dx = x - (i + .5) / N, dy = y - (j + .5) / N; if (dx * dx + dy * dy < r0 * r0) v.push(GL.grid[j * N + i]); }
+    let m; if (v.length) { v.sort((a, b) => a - b); m = v[Math.floor(.6 * (v.length - 1))]; } else { m = 0; for (const a of GL.grid) m += a; m /= GL.grid.length; }
+    return Math.min(256, Math.max(1.6, .22 / Math.max(m, 1e-4)));
+  }
+  function glowLiveDraw() {
+    GL.raf = 0; const g = GL.gl, P = GL.prog; if (!g || !P || !GL.pt) return;
+    const u = n => g.getUniformLocation(P, n), col = hexLin(gl.colour), mx = Math.max(...col, 1e-6);
+    g.viewport(0, 0, GL.cv.width, GL.cv.height);
+    g.uniform2f(u('px'), GL.pt[0], GL.pt[1]); g.uniform1f(u('size'), gl.size); g.uniform1f(u('soft'), .8);
+    g.uniform1f(u('inten'), Math.pow(gl.intensity / 65, .6)); g.uniform1f(u('gmax'), glowGmax(GL.pt[0], GL.pt[1])); g.uniform1f(u('mixv'), .85);
+    const az = Math.PI / 2, dv = [Math.cos(az), Math.sin(az), .6], dl = Math.hypot(...dv);
+    g.uniform1f(u('spot'), gl.mode === 'spot' ? 1 : 0); g.uniform1f(u('cosCut'), Math.cos(40 * Math.PI / 180));
+    g.uniform3f(u('dir'), dv[0] / dl, dv[1] / dl, dv[2] / dl); g.uniform3f(u('colorLin'), ...col); g.uniform3f(u('tint'), ...col.map(c => c / mx));
+    g.drawArrays(g.TRIANGLE_STRIP, 0, 4); GL.cv.hidden = false;
+  }
+  const glowLiveReady = () => S.tool === 'glow' && GL.on && GL.key && cur() && cur().glowLive === GL.key && !busy;
+  canvas.addEventListener('pointermove', e => {
+    if (!glowLiveReady()) { GL.cv.hidden = true; return; }
+    const r = canvas.getBoundingClientRect(); GL.pt = [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height];
+    if (!GL.raf) GL.raf = requestAnimationFrame(glowLiveDraw);
+  });
+  canvas.addEventListener('pointerleave', () => { GL.cv.hidden = true; });
+  canvas.addEventListener('pointerdown', () => { if (S.tool === 'glow') GL.cv.hidden = true; });
   async function bokehAdjust(point) {
     const c = cur(); if (!c || !c.bokehId || busy) return;
     if (point) c.bokehPoint = point;
@@ -1510,7 +1853,7 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
   }
 
   // ---------------------------------------------------------------- collage (made here in the browser, no AI needed)
-  const col = { photos: [], layout: 'grid', gap: 16, bg: '#ffffff', useCur: true };
+  const col = { photos: [], layout: 'grid', gap: 16, bg: '#ffffff', useCur: true, prompt: '', designs: [] };
   const LAYOUTS = { grid: 'Grid', row: 'Row', column: 'Column', feature: 'One big' };
   const BGS = [['White', '#ffffff'], ['Cream', '#f2e6d8'], ['Olive', '#555934'], ['Black', '#141410']];
   $('multiIn').onchange = async () => {
@@ -1568,9 +1911,13 @@ dialog.v3d::backdrop { background: rgba(20, 20, 16, .45); }
   const folded = new Set((store.get('lumen.folded') || '').split(',').filter(Boolean));
   document.querySelectorAll('.grp').forEach(g => {
     const h = g.querySelector('.gh'); h.setAttribute('aria-expanded', !folded.has(g.dataset.g));
-    h.onclick = () => { const open = h.getAttribute('aria-expanded') !== 'true'; h.setAttribute('aria-expanded', open);
+    h.onclick = () => {
+      if (matchMedia('(max-width: 700px)').matches) { const o = !g.classList.contains('mopen'); document.querySelectorAll('.grp').forEach(x => x.classList.remove('mopen')); g.classList.toggle('mopen', o); return; }
+      const open = h.getAttribute('aria-expanded') !== 'true'; h.setAttribute('aria-expanded', open);
       open ? folded.delete(g.dataset.g) : folded.add(g.dataset.g); store.set('lumen.folded', [...folded].join(',')); };
   });
+
+  document.querySelector('.grp[data-g="select"]').classList.add('mopen');
 
   // ---------------------------------------------------------------- start
   canvas.classList.add('picking');
