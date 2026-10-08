@@ -69,8 +69,11 @@ You need Python 3.10 or newer and Git. All commands start from the folder you cl
 
 ### 1. Get the code and the artwork thumbnails
 
+Replace `<repo-url>` with this repository's address (the green **Code** button on GitHub). The last word names the
+folder `LumenAI`, which the rest of this guide uses whatever the repository is called:
+
 ```bash
-git clone https://github.com/Ram-ui31/LumenAI.git
+git clone <repo-url> LumenAI
 cd LumenAI
 node tools/unzip-artworks.mjs
 ```
@@ -142,9 +145,21 @@ LUMEN_KEEP_WARM=0 modal deploy modal_tadsr.py
 Magenta styles and the AI upscaler (the editor tells you if one is missing). The first deploy builds the container
 images (5 to 20 minutes); later deploys take seconds.
 
-To remove the wake-up wait, deploy without `LUMEN_KEEP_WARM=0` (for example `modal deploy modal_api.py`). That app
-then keeps one GPU container running at all times (two can run for the API), and every running container is billed
-by the second, even when nobody uses it. To stop everything:
+To remove the wake-up wait, deploy without `LUMEN_KEEP_WARM=0`. That app then keeps one GPU container running at all
+times (two can run for the API), and every running container is billed by the second, even when nobody uses it. The
+setup we run keeps the heavy models warm and lets the light ones (IC-Light, Magenta, upscaler) scale to zero:
+
+```bash
+cd backend
+modal deploy modal_api.py
+modal deploy modal_flash.py
+modal deploy modal_object3d.py
+LUMEN_KEEP_WARM=0 modal deploy modal_iclight.py
+LUMEN_KEEP_WARM=0 modal deploy modal_magenta.py
+LUMEN_KEEP_WARM=0 modal deploy modal_tadsr.py
+```
+
+To stop everything:
 
 ```bash
 for a in adobe-ps-api adobe-ps-flash adobe-ps-object3d lumen-iclight lumen-magenta adobe-ps-tadsr; do modal app stop "$a"; done
