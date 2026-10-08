@@ -3,8 +3,12 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { inflateRawSync } from 'node:zlib';
+import { fileURLToPath } from 'node:url';
 
-const dir = 'frontend/assets', buf = readFileSync(join(dir, 'artworks.zip'));
+// the zip is found relative to this file, so the build works whatever folder Vercel starts in
+const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'frontend', 'assets');
+console.log('reading', join(dir, 'artworks.zip'));
+const buf = readFileSync(join(dir, 'artworks.zip'));
 let eocd = buf.length - 22;
 while (eocd >= 0 && buf.readUInt32LE(eocd) !== 0x06054b50) eocd--;
 if (eocd < 0) throw new Error('artworks.zip: end of central directory not found');
