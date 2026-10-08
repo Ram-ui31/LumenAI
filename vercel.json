@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "echo 'static site: nothing to install'",
-  "buildCommand": "cd frontend/assets && (unzip -oq artworks.zip || python3 -m zipfile -e artworks.zip .)",
+  "buildCommand": "node tools/unzip-artworks.mjs",
   "outputDirectory": "frontend",
   "cleanUrls": true
 }
