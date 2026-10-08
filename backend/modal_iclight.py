@@ -52,7 +52,11 @@ import time
 import modal
 import numpy as np
 
-GPU = os.environ.get("STUDIO_GPU", "L40S")
+GPU = os.environ.get("STUDIO_GPU", "H100")
+# always-warm containers (no wake-up wait). Every warm container is billed for every second it runs:
+# deploy with LUMEN_KEEP_WARM=0 to let it scale to zero again.
+KEEP_WARM = int(os.environ.get("LUMEN_KEEP_WARM", "1"))
+
 
 app = modal.App("lumen-iclight")
 cache = modal.Volume.from_name("light-studio-cache", create_if_missing=True)  # model weights
@@ -122,7 +126,7 @@ def iclight_compose(img, relit_small, detail, strength):
 
 # ----------------------------------------------------------------------------- Modal service
 @app.cls(gpu=GPU, image=studio_image, volumes={"/cache": cache}, timeout=1800,
-         scaledown_window=180, cpu=4, memory=16384)
+         scaledown_window=180, min_containers=KEEP_WARM, max_containers=1, cpu=4, memory=16384)
 class Job:
     @modal.enter()
     def load(self):

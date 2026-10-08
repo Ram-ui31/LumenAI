@@ -177,7 +177,8 @@ in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 | Diffusion steps (Lux / Kroma) | `ADOBEPS_API_STEPS` / `ADOBEPS_QUICK_STEPS` | 40 / 16 |
 | Largest side processed | `ADOBEPS_API_MAX_SIDE` | 2048 |
 | Lumina loading mode | `FLASH_MODE` when deploying `modal_flash.py`: `nf4te` or `offload` | `nf4te` |
-| GPU type on Modal | `MODAL_GPU` (API, Lumina, upscaler), `MODAL_GPU_3D`, `MODAL_GPU_SPAR3D`, `STUDIO_GPU` (IC-Light), `MODAL_GPU_MAGENTA` | H100 for the API and Lumina, L40S for 3D, IC-Light and the upscaler, L4 for Magenta |
+| GPU type on Modal | `MODAL_GPU` (API, Lumina, upscaler), `MODAL_GPU_3D`, `MODAL_GPU_SPAR3D`, `STUDIO_GPU` (IC-Light), `MODAL_GPU_MAGENTA` | `H100` for every app |
+| Always-warm containers | `LUMEN_KEEP_WARM` when deploying (1 = one container of every app always running, no wake-up wait; 0 = scale to zero when idle) | 1 |
 | Watermark on/off | `ADOBEPS_WATERMARK` | on |
 | No models (tests, demo) | `ADOBEPS_BACKEND=stub` | — |
 

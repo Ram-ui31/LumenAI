@@ -15,6 +15,10 @@ import modal
 HERE = Path(__file__).resolve().parent
 REMOTE = "/root/adobe-ps"
 GPU = os.environ.get("MODAL_GPU", "H100")
+# always-warm containers (no wake-up wait). Every warm container is billed for every second it runs:
+# deploy with LUMEN_KEEP_WARM=0 to let it scale to zero again.
+KEEP_WARM = int(os.environ.get("LUMEN_KEEP_WARM", "1"))
+
 DIFFUSERS = "git+https://github.com/huggingface/diffusers@578c9b2c6636ab2424a0e56186268b83623656b2"
 IGNORE = [".venv", ".venv/**", ".cache", ".cache/**", ".hf_cache", ".hf_cache/**", "outputs", "outputs/**", "**/__pycache__/**", ".env"]
 ENV = {"HF_HOME": "/vol/hf", "TORCH_HOME": "/vol/torch", "ADOBEPS_DEVICE": "cuda", "PYTHONUNBUFFERED": "1"}
@@ -59,7 +63,7 @@ def _link_volume():
             link.symlink_to(target)
 
 
-@app.cls(gpu=GPU, volumes={"/vol": vol}, timeout=60 * 60, scaledown_window=10 * 60, max_containers=1,
+@app.cls(gpu=GPU, volumes={"/vol": vol}, timeout=60 * 60, scaledown_window=10 * 60, min_containers=KEEP_WARM, max_containers=2,
          secrets=[modal.Secret.from_name("adobe-ps-hf")] + _optional_secret("adobe-ps-trends"))   # GEMINI_API_KEY for Trends
 class Studio:
     @modal.enter()

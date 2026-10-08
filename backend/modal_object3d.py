@@ -13,14 +13,18 @@ import time
 
 import modal
 
-GPU = os.environ.get("MODAL_GPU_3D", "L40S")
+GPU = os.environ.get("MODAL_GPU_3D", "H100")
+# always-warm containers (no wake-up wait). Every warm container is billed for every second it runs:
+# deploy with LUMEN_KEEP_WARM=0 to let it scale to zero again.
+KEEP_WARM = int(os.environ.get("LUMEN_KEEP_WARM", "1"))
+
 
 image = (
     modal.Image.from_registry("nvidia/cuda:12.1.1-devel-ubuntu22.04", add_python="3.10")
     .apt_install("git", "build-essential", "libgomp1", "libgl1", "libglib2.0-0")
     .pip_install("torch==2.4.0", "torchvision==0.19.0", index_url="https://download.pytorch.org/whl/cu121")
     .pip_install("setuptools==69.5.1", "wheel", "ninja")
-    .env({"TORCH_CUDA_ARCH_LIST": "7.5;8.0;8.6;8.9", "FORCE_CUDA": "1", "USE_CUDA": "1"})
+    .env({"TORCH_CUDA_ARCH_LIST": "7.5;8.0;8.6;8.9;9.0", "FORCE_CUDA": "1", "USE_CUDA": "1"})
     .run_commands("git clone https://github.com/Stability-AI/stable-fast-3d /opt/sf3d")
     .run_commands("cd /opt/sf3d && sed -i 's/-march=native/-mtune=generic/g' texture_baker/setup.py uv_unwrapper/setup.py")
     # build the C++/CUDA add-ons against the installed torch (pip's isolated build env has no torch: "No module named
@@ -33,7 +37,7 @@ spar_image = (
     .apt_install("git", "build-essential", "libgomp1", "libgl1", "libglib2.0-0")
     .pip_install("torch==2.4.0", "torchvision==0.19.0", index_url="https://download.pytorch.org/whl/cu121")
     .pip_install("setuptools==69.5.1", "wheel", "ninja")
-    .env({"TORCH_CUDA_ARCH_LIST": "7.5;8.0;8.6;8.9", "FORCE_CUDA": "1", "USE_CUDA": "1"})
+    .env({"TORCH_CUDA_ARCH_LIST": "7.5;8.0;8.6;8.9;9.0", "FORCE_CUDA": "1", "USE_CUDA": "1"})
     .run_commands("git clone https://github.com/Stability-AI/stable-point-aware-3d /opt/spar3d")
     .run_commands("cd /opt/spar3d && (sed -i 's/-march=native/-mtune=generic/g' texture_baker/setup.py uv_unwrapper/setup.py || true)")
     # AlphaCLIP's setup.py imports pkg_resources, which the newest setuptools (pulled in by pip's isolated build) no
@@ -43,13 +47,13 @@ spar_image = (
     .pip_install("flet==0.24.1")
     .env({"HF_HOME": "/vol/hf", "PYTHONUNBUFFERED": "1"})
 )
-SPAR_GPU = os.environ.get("MODAL_GPU_SPAR3D", "L40S")
+SPAR_GPU = os.environ.get("MODAL_GPU_SPAR3D", "H100")
 vol = modal.Volume.from_name("adobe-ps-data", create_if_missing=True)
 app = modal.App("adobe-ps-object3d", image=image)
 
 
 @app.cls(gpu=GPU, volumes={"/vol": vol}, secrets=[modal.Secret.from_name("adobe-ps-hf")],
-         timeout=10 * 60, scaledown_window=5 * 60, max_containers=1)
+         timeout=10 * 60, scaledown_window=5 * 60, min_containers=KEEP_WARM, max_containers=1)
 class SF3D:
     @modal.enter()
     def load(self):
@@ -102,7 +106,7 @@ class SF3D:
 
 
 @app.cls(image=spar_image, gpu=SPAR_GPU, volumes={"/vol": vol}, secrets=[modal.Secret.from_name("adobe-ps-hf")],
-         timeout=10 * 60, scaledown_window=5 * 60, max_containers=1)
+         timeout=10 * 60, scaledown_window=5 * 60, min_containers=KEEP_WARM, max_containers=1)
 class SPAR3D:
     """Stable Point Aware 3D: first samples a point cloud of the whole object (a small diffusion model), then builds
     the mesh from it, so depth and the unseen back come out fuller than SF3D's single pass. Gated on Hugging Face:

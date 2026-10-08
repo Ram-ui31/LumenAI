@@ -19,9 +19,14 @@ image = (modal.Image.debian_slim(python_version="3.11")
          .env({"TFHUB_CACHE_DIR": "/vol/cache/tfhub", "TF_CPP_MIN_LOG_LEVEL": "2", "TF_USE_LEGACY_KERAS": "1"}))
 vol = modal.Volume.from_name("adobe-ps-data", create_if_missing=True)
 app = modal.App("lumen-magenta", image=image)
+# always-warm containers (no wake-up wait). Every warm container is billed for every second it runs:
+# deploy with LUMEN_KEEP_WARM=0 to let it scale to zero again.
+KEEP_WARM = int(os.environ.get("LUMEN_KEEP_WARM", "1"))
 
 
-@app.cls(gpu=os.environ.get("MODAL_GPU_MAGENTA", "L4"), volumes={"/vol": vol}, timeout=5 * 60, scaledown_window=5 * 60, max_containers=1)
+
+@app.cls(gpu=os.environ.get("MODAL_GPU_MAGENTA", "H100"), volumes={"/vol": vol}, timeout=5 * 60, scaledown_window=5 * 60,
+          min_containers=KEEP_WARM, max_containers=1)
 class Magenta:
     @modal.enter()
     def load(self):

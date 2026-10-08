@@ -19,6 +19,10 @@ import modal
 
 HERE = Path(__file__).resolve().parent
 GPU = os.environ.get("MODAL_GPU", "H100")
+# always-warm containers (no wake-up wait). Every warm container is billed for every second it runs:
+# deploy with LUMEN_KEEP_WARM=0 to let it scale to zero again.
+KEEP_WARM = int(os.environ.get("LUMEN_KEEP_WARM", "1"))
+
 MODE = os.environ.get("FLASH_MODE", "nf4te")
 REPO = "black-forest-labs/FLUX.2-klein-4B"
 DIFFUSERS = "git+https://github.com/huggingface/diffusers@578c9b2c6636ab2424a0e56186268b83623656b2"
@@ -83,7 +87,7 @@ def _png(img) -> bytes:
     return b.getvalue()
 
 
-@app.cls(gpu=GPU, volumes={"/vol": vol}, timeout=10 * 60, scaledown_window=10 * 60, max_containers=1, secrets=SECRETS)
+@app.cls(gpu=GPU, volumes={"/vol": vol}, timeout=10 * 60, scaledown_window=10 * 60, min_containers=KEEP_WARM, max_containers=1, secrets=SECRETS)
 class Flash:
     @modal.enter()
     def start(self):

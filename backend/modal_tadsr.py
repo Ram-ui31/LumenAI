@@ -15,7 +15,11 @@ from types import SimpleNamespace
 
 import modal
 
-GPU = os.environ.get("MODAL_GPU", "L40S")
+GPU = os.environ.get("MODAL_GPU", "H100")
+# always-warm containers (no wake-up wait). Every warm container is billed for every second it runs:
+# deploy with LUMEN_KEEP_WARM=0 to let it scale to zero again.
+KEEP_WARM = int(os.environ.get("LUMEN_KEEP_WARM", "1"))
+
 REPO = "/opt/tadsr"
 WEIGHTS = "/vol/thirdparty/tadsr"
 
@@ -34,7 +38,7 @@ app = modal.App("adobe-ps-tadsr", image=image)
 MAX_OUT = 4096            # longest side of the result
 
 
-@app.cls(gpu=GPU, volumes={"/vol": vol}, timeout=15 * 60, scaledown_window=5 * 60, max_containers=1)
+@app.cls(gpu=GPU, volumes={"/vol": vol}, timeout=15 * 60, scaledown_window=5 * 60, min_containers=KEEP_WARM, max_containers=1)
 class Upscaler:
     @modal.enter()
     def load(self):

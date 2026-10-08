@@ -635,64 +635,16 @@ footer .logo { font-size: 32px; color: var(--ink); }
     <a class="btn-olive" href="editor.html">Open editor <svg class="icon"><use href="#i-arrow"/></svg></a>
   </section>
 
-  <!-- ------------------------------------------------------------ benchmarks -->
-  <section class="section bench" id="benchmarks" aria-labelledby="bm-h">
-    <button class="bench-link" id="benchOpen" type="button" aria-haspopup="dialog" aria-controls="benchCard"><span id="bm-h">See why LumenAI is perfect for you</span> <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
-  </section>
-
-  <dialog class="bench-card" id="benchCard" aria-labelledby="bc-h">
-    <div class="bc-head">
-      <div><span class="bench-kicker">Benchmarks</span><h3 id="bc-h">Fast, light and accurate</h3>
-        <p>Every LumenAI model runs inside a 16 GB GPU budget. Peak GPU memory (VRAM) and execution time per image, measured on an NVIDIA L40S after warm-up, October 2026.</p></div>
-      <button class="bc-x" id="benchClose" type="button" aria-label="Close benchmarks"><svg class="icon"><use href="#i-close"/></svg></button>
-    </div>
-    <div class="bc-stats">
-      <div><b>1.1 s</b><span>to create a 1024 px image with Lumina</span></div>
-      <div><b>14.2 GB</b><span>highest peak VRAM of any tool, under the 16 GB budget</span></div>
-      <div><b>&lt; 1 GB</b><span>extra memory for the safety check, which reuses the editing model</span></div>
-    </div>
-    <div class="bc-table-wrap">
-      <table class="bc-table">
-        <thead><tr><th scope="col">Feature</th><th scope="col">Model</th><th scope="col" class="num">Peak VRAM <small>of 16 GB</small></th><th scope="col" class="num">Execution time</th></tr></thead>
-        <tbody>
-          <tr><th scope="row">Create an image</th><td>Lumen 1.1 – Lumina</td><td class="num"><span class="vb"><i style="width:83.8%"></i></span>13.4 GB</td><td class="num">1.1 s</td></tr>
-          <tr><th scope="row">Create an image</th><td>Lumen 1.3 – Lux</td><td class="num"><span class="vb"><i style="width:78.1%"></i></span>12.5 GB</td><td class="num">20.6 s</td></tr>
-          <tr><th scope="row">Edit with words</th><td>Lumen 1.1 – Lumina</td><td class="num"><span class="vb"><i style="width:83.8%"></i></span>13.4 GB</td><td class="num">1.7 s</td></tr>
-          <tr><th scope="row">Edit with words</th><td>Lumen 1.3 – Lux</td><td class="num"><span class="vb"><i style="width:86.2%"></i></span>13.8 GB</td><td class="num">35 s</td></tr>
-          <tr><th scope="row">Product shot</th><td>Lumen 1.3 – Lux</td><td class="num"><span class="vb"><i style="width:88.8%"></i></span>14.2 GB</td><td class="num">23.5 s</td></tr>
-          <tr><th scope="row">AI upscale ×4</th><td>LumenAI Upscaler</td><td class="num"><span class="vb"><i style="width:35.6%"></i></span>5.7 GB</td><td class="num">under 0.5 s</td></tr>
-          <tr><th scope="row">View in 3D</th><td>LumenAI 3D</td><td class="num"><span class="vb"><i style="width:68.9%"></i></span>11.0 GB</td><td class="num">29 s</td></tr>
-          <tr><th scope="row">Safety check</th><td>LumenAI Guard</td><td class="num"><span class="vb"><i style="width:5.0%"></i></span>0.8 GB</td><td class="num">2.3 s</td></tr>
-          <tr><th scope="row">Invisible watermark</th><td>LumenAI Mark</td><td class="num"><span class="vb"><i style="width:0.0%"></i></span>CPU only</td><td class="num">0.08 s</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <h4>Better results than the alternatives we tested</h4>
-    <ul class="bc-wins">
-      <li><b>Object removal</b> 0.108 error (LPIPS, lower is better) vs 0.179 for MAT and 0.151 for LaMa</li>
-      <li><b>Pose changes</b> 59% of joints placed correctly and 10/10 same person, vs 36% and 2/10 for Leffa</li>
-      <li><b>Upscaling</b> 0.217 error vs 0.303 for standard resizing</li>
-      <li><b>Product shots</b> 0.90 product likeness vs 0.82 for FLUX.2 klein, which redraws logos</li>
-      <li><b>Watermark</b> still found in 99% of bits after JPEG compression, vs 53% for the basic method</li>
-      <li><b>Safety</b> blocks 19/20 harmful requests and 10/10 prompt injections with no normal edit refused, 5× faster than SingGuard-4B</li>
-    </ul>
-  </dialog>
 </main>
 
 <footer>
   <span class="logo">LumenAI</span>
-  <span><a href="#features">Features</a> &nbsp;·&nbsp; <a href="#benchmarks">Benchmarks</a> &nbsp;·&nbsp; <a href="editor.html">Editor</a> &nbsp;·&nbsp; <a href="privacy.html">Privacy</a></span>
+  <span><a href="#features">Features</a> &nbsp;·&nbsp; <a href="editor.html">Editor</a> &nbsp;·&nbsp; <a href="privacy.html">Privacy</a></span>
 </footer>
 
 <script>
 (() => {
   const store = (k, v) => { try { sessionStorage.setItem(k, v); return true; } catch (e) { return false; } };
-  // benchmarks card
-  const bc = document.getElementById('benchCard');
-  document.getElementById('benchOpen').onclick = () => bc.showModal();
-  document.getElementById('benchClose').onclick = () => bc.close();
-  bc.addEventListener('click', e => { if (e.target === bc) bc.close(); });      // click outside the card closes it
-
   // a fresh homepage starts with no photo chosen: "Open editor" without choosing one opens an empty editor
   try { sessionStorage.removeItem('lumen.image'); sessionStorage.removeItem('lumen.imageName'); } catch (e) {}
   const box = document.getElementById('dropbox'), zone = document.getElementById('dropzone');
