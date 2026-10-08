@@ -1,5 +1,18 @@
 # LumenAI
 
+<p>
+  <a href="docs/LumenAI_Technical_Report.pdf"><img alt="Technical report" src="https://img.shields.io/badge/Technical_report-PDF-B31B1B?style=flat&logo=adobeacrobatreader&logoColor=white"></a>
+  <a href="docs/BENCHMARKS.md"><img alt="Benchmarks" src="https://img.shields.io/badge/Benchmarks-docs-4C9A2A?style=flat"></a>
+  <img alt="Python 3.10+" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat&logo=python&logoColor=white">
+  <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-EE4C2C?style=flat&logo=pytorch&logoColor=white">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-009688?style=flat&logo=fastapi&logoColor=white">
+  <img alt="Runs on Modal" src="https://img.shields.io/badge/GPU-Modal-7FEE64?style=flat">
+  <img alt="Hosted on Vercel" src="https://img.shields.io/badge/Hosted_on-Vercel-000000?style=flat&logo=vercel&logoColor=white">
+  <img alt="Hugging Face models" src="https://img.shields.io/badge/Models-Hugging_Face-FFD21E?style=flat&logo=huggingface&logoColor=black">
+  <img alt="VRAM under 16 GB" src="https://img.shields.io/badge/VRAM-%E2%89%A416_GB-6A5ACD?style=flat">
+  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/License-MIT-blue?style=flat"></a>
+</p>
+
 **An AI photo editor and image generator that does what you type.** Describe a change ("make the backpack navy blue",
 "remove the person on the left") or a whole new picture, and LumenAI picks the right model for the job. Every model
 runs inside a 16 GB GPU memory budget.

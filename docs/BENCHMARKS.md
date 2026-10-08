@@ -12,11 +12,10 @@ which describes every metric and test set. Times are warm times at 1024 px, meas
 | Create an image | Lumen 1.1 Lumina (FLUX.2 klein 4B, 4-bit encoder) | 13.4 GB | 1.1 s |
 | Edit with words | Lumen 1.1 Lumina | 13.4 GB | 1.7 s |
 | Edit with words | Lumen 1.3 Lux | 13.8 GB | 18 s |
-| Product shot | Qwen-Image 2.1 | 14.2 GB | 23.5 s |
+| Product scene (API only) | Qwen-Image 2.1 | 14.2 GB | 23.5 s |
 | AI upscale ×4 | TADSR | 5.7 GB | < 0.5 s |
 | View in 3D (default) | SPAR3D \* | 11.0 GB | 25 s |
 | View in 3D (fast option) | Stable Fast 3D \* | 11.0 GB | 20 s |
-| View in 3D | Hunyuan3D-2 | 11.5 GB | 54 s |
 | Safety check | Qwen3-VL (shared) + DeBERTa-v3 | +0.8 GB | 2.3 s |
 | Invisible watermark | DWT-DCT-SVD | none | 0.08 s |
 
@@ -40,16 +39,6 @@ SPAR3D 7,584 faces and a 0.4 MB GLB, SF3D 17,612 faces and 0.7 MB. IC-Light was 
 | Keeps logos and text | weaker (DINOv2 0.815) | strong | strong (DINOv2 0.900) |
 | Best for | drafts, quick ideas, many variations | everyday edits and images | final images, long or detailed requests |
 
-## Ways to load Lumen 1.1 Lumina
-
-3 prompts and one edit at 1024 px.
-
-| Mode | Peak VRAM | s / image | Edit | Note |
-|---|---|---|---|---|
-| bf16, fully resident | 18.6 GB | 1.11 | 1.73 | over budget |
-| **4-bit text encoder (shipped)** | **13.35 GB** | **1.13** | **1.72** | same quality by eye |
-| model offload | 9.5 GB | 7.55 | 7.42 | 7× slower |
-
 ## Quality against the alternatives we evaluated
 
 | Task (data) | Metric | LumenAI | Alternatives |
@@ -57,7 +46,7 @@ SPAR3D 7,584 faces and a 0.4 MB GLB, SF3D 17,612 faces and 0.7 MB. IC-Light was 
 | Object removal (RORD) | LPIPS in the hole ↓ | **0.108** | LaMa 0.151, MAT 0.179, Segformer+LaMa 0.149 |
 | Pose transfer (10 pairs) | PCK@0.2 ↑ / same person | **0.59 / 10 of 10** | Leffa 0.36 / 2 of 10 |
 | Upscale ×4 (16 photos) | LPIPS ↓ | **0.217** (TADSR) | Lanczos 0.303, Qwen refine 0.290 |
-| Product shot (24 cases) | DINOv2 product similarity ↑ | **0.900** | FLUX.2 klein 0.815 |
+| Product scene, API only (24 cases) | DINOv2 product similarity ↑ | **0.900** | FLUX.2 klein 0.815 |
 | Text to image (20 prompts) | judge: prompt / quality ↑ | 9.7 / 9.8 (Lux) | klein 9.7 / 9.7, Z-Image 9.6 / 9.6 |
 | Instruction edits (GEdit, 33) | overall ↑ | 7.36 (Qwen), **7.80** (Lumina) | InstructPix2Pix 2.91 |
 | Style transfer (48 pairs) | content kept (DINOv2) ↑ / style (Gram, log) ↓ | **0.81** / 1.25 (klein) | Magenta (TensorFlow) 0.44 / **0.87** |
